@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% from "_message_box.html" import message_box with context %}
+{% block title %}{{ profile.display_name }} · DJHub{% endblock %}
+
+{% block content %}
+
+<style>
+  :root{
+    --bg:#f6f7fb;
+    --card:#ffffff;
+    --text:#0f172a;
+    --muted:#64748b;
+    --border:#e5e7eb;
+    --shadow:0 18px 50px rgba(2,6,23,0.10);
+    --radius:18px;
+    --blue:#2f6bff;
+  }
+
+  .profile-page *{ box-sizing: border-box; }
+
+  .profile-page{
+    max-width: 980px;
+    margin: 22px auto;
+    padding: 0 16px 80px;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    color: var(--text);
+  }
+
+  .back-link{
+    display:inline-flex;
+    align-items:center;
+    gap: 8px;
+    margin-bottom: 14px;
+    color: #0b5fff;
+    text-decoration: none;
+    font-weight: 900;
+    font-size: 13px;
+  }
+  .back-link:hover{ text-decoration: underline; }
+
+  /* Hero card like a modern profile header */
+  .profile-hero{
+    position: relative;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: var(--shadow);
+    background:
+      radial-gradient(1200px 400px at 20% 0%, rgba(47,107,255,0.18), transparent 60%),
+      radial-gradient(900px 400px at 80% 0%, rgba(0,0,0,0.10), transparent 55%),
+      linear-gradient(to bottom, #0b1220, #0b1220);
+  }
+
+  .profile-hero-inner{
+    display:flex;
+    gap: 16px;
+    align-items:center;
+    padding: 18px;
+  }
+
+  .avatar{
+    width: 96px;
+    height: 96px;
+    border-radius: 22px;
+    object-fit: cover;
+    border: 1px solid rgba(255,255,255,0.16);
+    background: rgba(255,255,255,0.06);
+    flex: 0 0 auto;
+  }
+
+  .hero-main{
+    flex: 1;
+    min-width: 0;
+  }
+
+  .name{
+    font-size: 26px;
+    font-weight: 950;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: #fff;
+    margin: 0;
+  }
+
+  .handle{
+    margin-top: 6px;
+    color: rgba(226,232,240,0.78);
+    font-weight: 800;
+    font-size: 13px;
+    display:flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items:center;
+  }
+
+  .pill-row{
+    margin-top: 12px;
+    display:flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    padding: 7px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.90);
+    font-weight: 900;
+    font-size: 12px;
+  }
+  .pill.blue{
+    background: rgba(47,107,255,0.20);
+    border-color: rgba(47,107,255,0.32);
+    color: rgba(255,255,255,0.95);
+  }
+
+  .hero-actions{
+    display:flex;
+    gap: 10px;
+    align-items:center;
+    flex: 0 0 auto;
+  }
+
+  /* The message_box macro will render its own button.
+     This wrapper makes it sit nicely. */
+  .msg-wrap{
+    margin-top: 14px;
+  }
+
+  .card{
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 10px 30px rgba(2,6,23,0.06);
+    padding: 16px;
+    margin-top: 14px;
+  }
+
+  .card h2{
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 950;
+    color: #0f172a;
+  }
+
+  .bio{
+    color: #111827;
+    white-space: pre-wrap;
+    line-height: 1.5;
+    font-size: 14px;
+  }
+
+  @media (max-width: 640px){
+    .profile-hero-inner{ align-items:flex-start; }
+    .avatar{ width: 84px; height: 84px; border-radius: 18px; }
+    .name{ font-size: 22px; }
+  }
+</style>
+
+<div class="profile-page">
+  <a class="back-link" href="{{ url_for('profile_search') }}">← Back to search</a>
+
+  <div class="profile-hero">
+    <div class="profile-hero-inner">
+      <img
+        class="avatar"
+        src="{{ profile.avatar_url or url_for('static', filename='default-avatar.png') }}"
+        alt="Avatar"
+      />
+
+      <div class="hero-main">
+        <h1 class="name">{{ profile.display_name }}</h1>
+
+        <div class="handle">
+          <span>@{{ profile.user.username }}</span>
+          {% if profile.city %}<span>• {{ profile.city }}</span>{% endif %}
+        </div>
+
+        <div class="pill-row">
+          {% if profile.genres %}
+            <span class="pill blue">{{ profile.genres }}</span>
+          {% endif %}
+        </div>
+
+        {# Keep your existing message behavior, just styled in place #}
+        {% if is_logged_in and current_user.id != profile.user_id %}
+          <div class="msg-wrap">
+            {{ message_box(profile.user_id) }}
+          </div>
+        {% elif not is_logged_in %}
+          <div class="msg-wrap">
+            {{ message_box(profile.user_id) }}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if profile.bio %}
+    <div class="card">
+      <h2>Bio</h2>
+      <div class="bio">{{ profile.bio }}</div>
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

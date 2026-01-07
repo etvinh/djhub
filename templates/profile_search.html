@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% block title %}Profile Search · DJHub{% endblock %}
+
+{% block content %}
+
+<style>
+  :root{
+    --bg:#0b1220;
+    --card: rgba(17,24,39,0.92);
+    --border: rgba(255,255,255,0.10);
+    --muted: rgba(226,232,240,0.72);
+    --text: rgba(255,255,255,0.92);
+    --blue:#2f6bff;
+  }
+
+  .search-page *{ box-sizing:border-box; }
+
+  .search-page{
+    
+  }
+
+  .search-shell{
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  .search-hero{
+    border-radius: 18px;
+    padding: 22px;
+    background:
+      linear-gradient(90deg, rgba(0,0,0,0.80) 0%, rgba(0,0,0,0.35) 55%, rgba(0,0,0,0.10) 100%);
+      /*
+      radial-gradient(900px 360px at 20% 0%, rgba(47,107,255,0.22), transparent 60%),
+      radial-gradient(800px 360px at 80% 0%, rgba(255,255,255,0.10), transparent 55%),
+      rgba(17,24,39,0.86);
+      */
+    border: 1px solid var(--border);
+    box-shadow: 0 30px 80px rgba(2,6,23,0.45);
+    overflow:hidden;
+  }
+
+  .search-hero h1{
+    margin: 0;
+    color: #fff;
+    font-size: 28px;
+    font-weight: 950;
+    letter-spacing: -0.02em;
+  }
+
+  .search-hero p{
+    margin: 10px 0 14px;
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 13px;
+    max-width: 560px;
+  }
+
+  .searchbar{
+    display:flex;
+    gap: 10px;
+    align-items:center;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 14px;
+    padding: 10px;
+  }
+
+  #q{
+    flex: 1;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.06);
+    padding: 0 14px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 750;
+    outline: none;
+  }
+  #q::placeholder{ color: rgba(226,232,240,0.45); }
+  #q:focus{
+    border-color: rgba(47,107,255,0.7);
+    box-shadow: 0 0 0 4px rgba(47,107,255,0.22);
+    background: rgba(255,255,255,0.10);
+  }
+
+  .hint{
+    margin-top: 10px;
+    color: rgba(226,232,240,0.55);
+    font-weight: 700;
+    font-size: 12px;
+  }
+
+  #status{
+    margin-top: 10px;
+    color: rgba(226,232,240,0.72);
+    font-weight: 800;
+    font-size: 12px;
+  }
+
+  /* Results grid */
+  #results{
+    margin-top: 14px;
+    display: grid;
+    gap: 12px;
+  }
+
+  /* Result card */
+  .result-card{
+    display:flex;
+    gap: 12px;
+    align-items:center;
+    padding: 12px;
+    border-radius: 16px;
+    background: rgba(17,24,39,0.92);
+    border: 1px solid rgba(255,255,255,0.10);
+    box-shadow: 0 14px 40px rgba(2,6,23,0.25);
+    text-decoration:none;
+    color: #fff;
+    transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+  }
+  .result-card:hover{
+    transform: translateY(-2px);
+    box-shadow: 0 22px 60px rgba(2,6,23,0.32);
+    border-color: rgba(255,255,255,0.16);
+  }
+
+  .avatar{
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    object-fit: cover;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.06);
+    flex: 0 0 auto;
+  }
+
+  .name-row{
+    display:flex;
+    gap: 8px;
+    align-items:baseline;
+    flex-wrap: wrap;
+  }
+
+  .display{
+    font-weight: 950;
+    letter-spacing: -0.01em;
+  }
+
+  .handle{
+    color: rgba(226,232,240,0.70);
+    font-weight: 850;
+    font-size: 12px;
+  }
+
+  .meta{
+    margin-top: 4px;
+    color: rgba(226,232,240,0.65);
+    font-weight: 750;
+    font-size: 12px;
+  }
+
+  .chip{
+    display:inline-flex;
+    align-items:center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.90);
+    font-weight: 900;
+    font-size: 11px;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 560px){
+    .chip{ display:none; }
+    .search-hero h1{ font-size: 24px; }
+  }
+</style>
+
+  <div class="search-shell">
+
+    <div class="search-hero">
+      <h1>Find a DJ 🔍</h1>
+      <p>Search by username, display name, city, or genres. Results update as you type.</p>
+
+      <div class="searchbar">
+        <input id="q" type="search" placeholder="Type a username…" autofocus autocomplete="off">
+        <span style="color: rgba(226,232,240,0.55); font-weight: 900;">@</span>
+      </div>
+
+      <div class="hint">Tip: try “house”, “oakland”, or “@djname”</div>
+      <div id="status"></div>
+    </div>
+
+    <div id="results"></div>
+
+  </div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const input = document.getElementById("q");        // ✅ your existing search bar
+  const results = document.getElementById("results"); // ✅ your existing results container
+  const status = document.getElementById("status");
+
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, c => ({
+      "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+    }[c]));
+  }
+
+  let t = null;
+
+  input?.addEventListener("input", () => {
+    clearTimeout(t);
+
+    t = setTimeout(async () => {
+      let q = input.value.trim();
+
+      // Optional: allow "@djname" searches by stripping leading "@"
+      if (q.startsWith("@")) q = q.slice(1);
+
+      if (!q) {
+        results.innerHTML = "";
+        if (status) status.textContent = "";
+        return;
+      }
+
+      if (status) status.textContent = "Searching…";
+
+      try {
+        const res = await fetch(`/api/profiles/search?q=${encodeURIComponent(q)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
+        const profiles = data.profiles || [];
+
+        if (profiles.length === 0) {
+          results.innerHTML = "";
+          if (status) status.textContent = "No matches.";
+          return;
+        }
+
+        if (status) status.textContent = `${profiles.length} match${profiles.length === 1 ? "" : "es"}`;
+
+        // Render using YOUR existing card styles (.result-card, .avatar, etc.)
+        results.innerHTML = profiles.map(p => `
+          <a class="result-card" href="/p/${esc(p.id)}">
+            <img class="avatar" src="${esc(p.avatar_url)}" alt="">
+            <div style="min-width:0">
+              <div class="name-row">
+                <div class="display">${esc(p.display_name || p.username)}</div>
+                <div class="handle">@${esc(p.username || "")}</div>
+              </div>
+              <div class="meta">${esc(p.city || "")}${p.genres ? " • " + esc(p.genres) : ""}</div>
+            </div>
+            ${p.genres ? `<span class="chip">${esc(p.genres)}</span>` : ""}
+          </a>
+        `).join("");
+
+      } catch (err) {
+        console.error("Profile search failed:", err);
+        if (status) status.textContent = "Search failed. Check console.";
+      }
+    }, 250);
+  });
+</script>
+{% endblock %}
+

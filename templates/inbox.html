@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+  :root{
+    --bg:#fafafa;
+    --card:#fff;
+    --text:#0f172a;
+    --muted:#64748b;
+    --border:#e5e7eb;
+    --shadow:0 10px 30px rgba(2, 6, 23, 0.08);
+    --blue:#0b5fff;
+  }
+
+  .wrap{ max-width: 980px; margin: 24px auto; padding: 0 16px; }
+  .shell{
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(to bottom, #fff, #fafafa);
+  }
+  .title{
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    font-size: 18px;
+  }
+  .actions{ display:flex; gap:10px; align-items:center; }
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding: 9px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    text-decoration:none;
+    font-weight: 800;
+    font-size: 13px;
+    cursor:pointer;
+  }
+  .pill.primary{
+    background: var(--blue);
+    border-color: transparent;
+    color: white;
+  }
+  .pill:hover{ filter: brightness(0.98); }
+
+  /* IG list */
+  .list{ background: var(--bg); padding: 10px; }
+  .row{
+    display:flex;
+    gap: 12px;
+    align-items:center;
+    padding: 12px 12px;
+    border-radius: 14px;
+    text-decoration:none;
+    color: inherit;
+  }
+  .row:hover{ background: #fff; box-shadow: 0 6px 16px rgba(2,6,23,0.06); }
+
+  .avatar{
+    width: 48px; height: 48px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    flex: 0 0 auto;
+  }
+
+  .mid{ min-width: 0; flex: 1; }
+  .name-line{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-width: 0;
+  }
+  .name{
+    font-weight: 900;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .handle{
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .preview{
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .right{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap: 6px;
+    flex: 0 0 auto;
+  }
+  .time{
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+  .badge{
+    min-width: 18px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--blue);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 900;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  /* New message modal-ish box */
+  .composer{
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: #fff;
+    display:none;
+  }
+  .composer.open{ display:block; }
+  .grid{
+    display:grid;
+    grid-template-columns: 220px 1fr 120px;
+    gap: 10px;
+    align-items:end;
+  }
+  .field label{
+    display:block;
+    font-size: 12px;
+    font-weight: 900;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .field input{
+    width: 100%;
+    height: 44px;
+    padding: 0 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    outline: none;
+    font-size: 14px;
+  }
+  .field input:focus{
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 4px rgba(147,197,253,0.25);
+  }
+
+  @media (max-width: 760px){
+    .grid{ grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="wrap">
+  <div class="shell">
+    <div class="topbar">
+      <div class="title">Messages</div>
+      <div class="actions">
+        <button class="pill primary" type="button" onclick="toggleComposer()">
+          + New message
+        </button>
+      </div>
+    </div>
+
+    <div id="composer" class="composer">
+      <form method="post" action="{{ url_for('start_conversation') }}">
+        <div class="grid">
+          <div class="field">
+            <label>Recipient (user id)</label>
+            <input name="recipient_id" placeholder="e.g. 12" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label>Message (optional)</label>
+            <input name="body" placeholder="Write a message…">
+          </div>
+          <button class="pill primary" type="submit">Open chat</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="list">
+      {% if items|length == 0 %}
+        <div style="padding:18px; color: var(--muted); font-weight:800; text-align:center;">
+          No conversations yet.
+        </div>
+      {% else %}
+        {% for it in items %}
+          <a class="row" href="{{ url_for('view_conversation', conversation_id=it.convo.id) }}">
+            <img class="avatar" src="{{ it.avatar }}" alt="avatar">
+            <div class="mid">
+              <div class="name-line">
+                <div class="name">{{ it.other_name }}</div>
+                <div class="handle">@{{ it.other_username }}</div>
+              </div>
+              <div class="preview">
+                {{ it.last_text if it.last_text else "Say hi 👋" }}
+              </div>
+            </div>
+            <div class="right">
+              <div class="time">
+                {{ it.last_at.strftime("%b %d, %I:%M %p") if it.last_at else "" }}
+              </div>
+              {% if it.unread_count and it.unread_count > 0 %}
+                <div class="badge">{{ it.unread_count }}</div>
+              {% endif %}
+            </div>
+          </a>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+  function toggleComposer(){
+    const el = document.getElementById("composer");
+    el.classList.toggle("open");
+  }
+</script>
+
+{% endblock %}

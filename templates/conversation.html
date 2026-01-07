@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+  :root{
+    --bg: #f6f7fb;
+    --card: #ffffff;
+    --text: #0f172a;
+    --muted: #64748b;
+    --border: #e5e7eb;
+    --shadow: 0 10px 30px rgba(2, 6, 23, 0.08);
+    --radius: 18px;
+  }
+
+  .chat-page{
+    max-width: 880px;
+    margin: 24px auto;
+    padding: 0 16px;
+  }
+
+  .chat-shell{
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: min(78vh, 760px);
+  }
+
+  .chat-header{
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(to bottom, #fff, #fafafa);
+  }
+
+  .chat-header .back{
+    text-decoration: none;
+    color: var(--muted);
+    font-weight: 700;
+    padding: 8px 10px;
+    border-radius: 12px;
+  }
+  .chat-header .back:hover{ background: #f1f5f9; color: var(--text); }
+
+  .chat-header .title{
+    display:flex;
+    flex-direction:column;
+    line-height: 1.15;
+  }
+  .chat-header .title .name{
+    font-weight: 900;
+    color: var(--text);
+    font-size: 16px;
+  }
+  .chat-header .title .sub{
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .chat-log{
+    flex: 1;
+    overflow: auto;
+    padding: 16px;
+    background: var(--bg);
+  }
+
+  .empty{
+    text-align:center;
+    color: var(--muted);
+    font-size: 13px;
+    padding: 18px 0;
+  }
+
+  .msg-row{
+    display: flex;
+    margin: 10px 0;
+  }
+  .msg-row.me{ justify-content: flex-end; }
+  .msg-row.them{ justify-content: flex-start; }
+
+  .bubble{
+    max-width: min(560px, 78%);
+    padding: 10px 12px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  .msg-row.me .bubble{
+    background: #0b5fff;
+    color: #fff;
+    border-color: rgba(255,255,255,0.18);
+    border-top-right-radius: 8px;
+  }
+
+  .msg-row.them .bubble{
+    background: #ffffff;
+    border-top-left-radius: 8px;
+  }
+
+  .meta{
+    margin-top: 6px;
+    font-size: 11px;
+    color: rgba(100,116,139,0.9);
+  }
+  .msg-row.me .meta{
+    text-align: right;
+    color: rgba(226,232,240,0.9);
+  }
+
+  .composer{
+    border-top: 1px solid var(--border);
+    padding: 12px;
+    background: #fff;
+  }
+
+  .composer-inner{
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+
+  .composer textarea{
+    flex: 1;
+    min-height: 44px;
+    max-height: 160px;
+    resize: vertical;
+    padding: 12px 12px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    outline: none;
+    font-size: 14px;
+  }
+
+  .composer textarea:focus{
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 4px rgba(147,197,253,0.25);
+  }
+
+  .composer button{
+    height: 44px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 14px;
+    font-weight: 900;
+    background: #0b5fff;
+    color: #fff;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .composer button:hover{ filter: brightness(0.95); }
+
+  .hint{
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+</style>
+
+<div class="chat-page">
+  <div class="chat-shell">
+
+    <div class="chat-header">
+      <a class="back" href="{{ url_for('inbox') }}">← Inbox</a>
+      <div class="title">
+        <div class="name">Conversation</div>
+        <div class="sub">Private messages • DJHub</div>
+      </div>
+    </div>
+
+    <div id="chatLog" class="chat-log">
+      {% if messages|length == 0 %}
+        <div class="empty">No messages yet — say hi 👋</div>
+      {% endif %}
+
+      {% for m in messages %}
+        <div class="msg-row {{ 'me' if m.sender_id == current_user.id else 'them' }}">
+          <div>
+            <div class="bubble">{{ m.body }}</div>
+            <div class="meta">
+              {{ m.created_at.strftime("%b %d, %I:%M %p") if m.created_at else "" }}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="composer">
+      <form method="POST" action="{{ url_for('view_conversation', conversation_id=convo.id) }}">
+        <div class="composer-inner">
+          <textarea
+            id="msgBody"
+            name="body"
+            rows="1"
+            placeholder="Message…"
+          ></textarea>
+          <button id="sendBtn" type="submit">Send</button>
+        </div>
+        <div class="hint">Press Enter to send • Shift+Enter for new line</div>
+      </form>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  (function () {
+    const log = document.getElementById("chatLog");
+    const ta = document.getElementById("msgBody");
+    const btn = document.getElementById("sendBtn");
+
+    // Scroll to latest message on load
+    if (log) log.scrollTop = log.scrollHeight;
+
+    // Autofocus input
+    if (ta) ta.focus();
+
+    // Enter to send (Shift+Enter newline)
+    ta?.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        if (ta.value.trim().length === 0) return; // prevent empty
+        btn.click();
+      }
+    });
+  })();
+</script>
+
+{% endblock %}

@@ -1,2 +1,19 @@
 .listing { margin: 12px 0; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb; }
 #loadMore { display:block; margin:16px auto; padding:8px 14px; }
+
+/* Navbar */
+.navbar {
+  background-color: #391454;      /* Dark purple (Indigo) */
+  padding: 12px 24px;
+}
+
+.navbar a {
+  color: #fff;                    /* White text */
+  text-decoration: none;
+  font-weight: 600;
+  margin-right: 20px;
+}
+
+.navbar a:hover {
+  text-decoration: underline;
+}

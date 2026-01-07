@@ -1,0 +1,53 @@
+{% macro message_box(recipient_id) %}
+  <button type="button"
+    onclick="
+      const box = document.getElementById('msg-{{ recipient_id }}');
+      box.style.display = 'block';
+      const ta = box.querySelector('textarea');
+      if (ta) ta.focus();
+    ">
+    Message
+  </button>
+
+  <div id="msg-{{ recipient_id }}" style="display:none;margin-top:10px;">
+    {% if is_logged_in %}
+      <form method="post" action="{{ url_for('start_conversation') }}">
+        <input type="hidden" name="recipient_id" value="{{ recipient_id }}">
+
+        <textarea name="body"
+          rows="3"
+          placeholder="Write a message… (optional)"
+          style="width:100%;padding:8px;border-radius:8px;"></textarea>
+
+        <div style="margin-top:6px;display:flex;gap:8px;">
+          <button type="submit">Send message</button>
+          <button type="button"
+            onclick="document.getElementById('msg-{{ recipient_id }}').style.display='none'">
+            Cancel
+          </button>
+        </div>
+      </form>
+    {% else %}
+      <div style="padding:10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
+        <div style="margin-bottom:8px;color:#111827;">
+          Create an account to start messaging.
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <a href="{{ url_for('signup') }}"
+             style="display:inline-block;padding:8px 12px;border-radius:10px;background:#2563eb;color:#fff;text-decoration:none;">
+            Sign up
+          </a>
+          <a href="{{ url_for('login') }}"
+             style="display:inline-block;padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;text-decoration:none;">
+            Log in
+          </a>
+          <button type="button"
+            onclick="document.getElementById('msg-{{ recipient_id }}').style.display='none'"
+            style="padding:8px 12px;border-radius:10px;">
+            Cancel
+          </button>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% endmacro %}

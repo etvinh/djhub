@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}DJHub{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        :root{
+          --nav-bg: rgba(10, 10, 12, 0.72);
+          --nav-border: rgba(255,255,255,0.10);
+          --nav-text: rgba(255,255,255,0.90);
+          --nav-muted: rgba(226,232,240,0.75);
+          --nav-pill: rgba(255,255,255,0.10);
+          --nav-pill-border: rgba(255,255,255,0.14);
+          --blue: #2f6bff;
+        }
+
+        /* Flash messages (keep your existing) */
+        .flash-message { padding: 10px; margin-bottom: 15px; border-radius: 10px; font-weight: 700; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+
+        /* ===== NAVBAR: dark/glassy like the reference ===== */
+        body{
+          margin: 0;
+          font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+          background: #fff;
+        }
+
+        .navbar{
+          position: sticky;
+          top: 0;
+          z-index: 50;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 12px 16px;
+          background: linear-gradient(to bottom, rgba(0,0,0,0.70), rgba(0,0,0,0.55));
+          border-bottom: 1px solid var(--nav-border);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+        }
+
+        .nav-inner{
+          width: 100%;
+          max-width: 1100px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .brand{
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          color: #fff;
+          text-decoration: none;
+          font-weight: 900;
+          letter-spacing: -0.02em;
+          padding: 8px 10px;
+          border-radius: 12px;
+        }
+        .brand:hover{ background: rgba(255,255,255,0.08); }
+
+        .brand-mark{
+          width: 28px;
+          height: 28px;
+          border-radius: 10px;
+          background: rgba(255,255,255,0.12);
+          border: 1px solid rgba(255,255,255,0.16);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 900;
+          color: #fff;
+        }
+        .brand-name{ font-size: 14px; }
+
+        .nav-links{
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .nav-link{
+          color: var(--nav-text);
+          text-decoration: none;
+          font-weight: 800;
+          font-size: 13px;
+          padding: 9px 12px;
+          border-radius: 999px;
+          border: 1px solid transparent;
+          transition: background 120ms ease, border-color 120ms ease;
+        }
+        .nav-link:hover{
+          background: var(--nav-pill);
+          border-color: var(--nav-pill-border);
+        }
+
+        .nav-spacer{ flex: 1; }
+
+        .nav-right{
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .user-info{
+          color: var(--nav-muted);
+          font-weight: 800;
+          font-size: 13px;
+          white-space: nowrap;
+        }
+
+        .icon-btn{
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          border-radius: 999px;
+          border: 1px solid var(--nav-pill-border);
+          background: rgba(255,255,255,0.10);
+          text-decoration: none;
+          transition: filter 120ms ease, transform 120ms ease;
+        }
+        .icon-btn:hover{ filter: brightness(1.05); transform: translateY(-1px); }
+
+        /* make svg icon visible on dark background */
+        .icon-btn img{
+          width: 20px;
+          height: 20px;
+          filter: invert(1);
+          opacity: 0.95;
+        }
+
+        .primary-btn{
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          height: 40px;
+          padding: 0 14px;
+          border-radius: 999px;
+          background: var(--blue);
+          color: #fff;
+          font-weight: 900;
+          font-size: 13px;
+          text-decoration: none;
+          border: 0;
+        }
+        .primary-btn:hover{ filter: brightness(0.95); }
+
+        .ghost-btn{
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          height: 40px;
+          padding: 0 14px;
+          border-radius: 999px;
+          background: rgba(255,255,255,0.10);
+          color: #fff;
+          font-weight: 900;
+          font-size: 13px;
+          text-decoration: none;
+          border: 1px solid var(--nav-pill-border);
+        }
+        .ghost-btn:hover{ filter: brightness(1.05); }
+
+        main{
+          max-width: 1100px;
+          margin: 0 auto;
+          padding: 0 16px;
+        }
+
+        /* Mobile */
+        @media (max-width: 640px){
+          .user-info{ display:none; }
+          .brand-name{ display:none; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+      <div class="nav-inner">
+
+        <!-- Brand (links to Home) -->
+        <a class="brand" href="{{ url_for('listings_feed') }}">
+          <span class="brand-mark">DJ</span>
+          <span class="brand-name">DJHub</span>
+        </a>
+
+        <!-- Left links (same buttons as before) -->
+        <div class="nav-links">
+          <a class="nav-link" href="{{ url_for('listings_feed') }}">Home</a>
+          <a class="nav-link" href="#">About</a>
+          <a class="nav-link" href="{{ url_for('profile_search') }}">Search Profiles</a>
+
+          <!-- Messages icon button (same logic + same route) -->
+          <a class="icon-btn"
+             href="{% if current_user.is_authenticated %}{{ url_for('inbox') }}{% else %}{{ url_for('go_signup_for_messages') }}{% endif %}"
+             title="Messages">
+            <img src="{{ url_for('static', filename='icons/inbox.svg') }}"
+                 alt="Messages">
+          </a>
+        </div>
+
+        <div class="nav-spacer"></div>
+
+        <!-- Right side (same buttons as before) -->
+        <div class="nav-right">
+          {% if current_user.is_authenticated %}
+            <span class="user-info">Welcome, <b style="color:#fff;">{{ current_user.username }}</b></span>
+            <a class="ghost-btn" href="{{ url_for('logout') }}">Logout</a>
+          {% else %}
+            <a class="ghost-btn" href="{{ url_for('login') }}">Login</a>
+            <a class="primary-btn" href="{{ url_for('signup') }}">Sign Up</a>
+          {% endif %}
+        </div>
+
+      </div>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div style="max-width:1100px;margin:16px auto;padding:0 16px;">
+          {% for category, message in messages %}
+            <div class="flash-message {{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
