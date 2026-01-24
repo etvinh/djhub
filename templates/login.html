@@ -147,10 +147,10 @@
 
 <div class="auth-page">
   <div class="auth-card">
-    <h2>Log in to DJHub</h2>
-    <div class="auth-sub">Access gigs, messages, and verified talent</div>
+    <h2>{% block auth_heading %}Log in to DJHub{% endblock %}</h2>
+    <div class="auth-sub">{% block auth_subtitle %}Access gigs, messages, and verified talent{% endblock %}</div>
 
-    <!-- Login Form (UNCHANGED BACKEND) -->
+    {% block auth_form %}
     <form method="POST" action="{{ url_for('login') }}">
       <div class="form-group">
         <label for="username">Username</label>
@@ -176,10 +176,11 @@
 
       <button type="submit" class="btn-primary">Log In</button>
     </form>
+    {% endblock %}
 
+    {% block auth_actions %}
     <div class="divider">or</div>
 
-    <!-- Gateway Options -->
     <div class="alt-actions">
       <a href="{{ url_for('signup') }}" class="btn-secondary">
         Create an account
@@ -189,6 +190,7 @@
         Continue without signing in
       </a>
     </div>
+    {% endblock %}
   </div>
 </div>
 

@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}My Listings · DJHub{% endblock %}
+
+{% block content %}
+<style>
+  .my-listings{
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 28px 16px 60px;
+  }
+  .my-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+  .my-head h1{
+    margin:0;
+    font-size: 28px;
+    font-weight: 900;
+    color: #0f172a;
+  }
+  .section-title{
+    margin: 24px 0 12px;
+    font-size: 20px;
+    font-weight: 900;
+    color: #0f172a;
+  }
+  .primary-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: var(--blue);
+    color: #fff;
+    font-weight: 900;
+    font-size: 13px;
+    text-decoration: none;
+    border: 0;
+  }
+  .list{
+    display:grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .card{
+    display:block;
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px;
+    color: inherit;
+    text-decoration:none;
+    box-shadow: 0 10px 30px rgba(15,23,42,0.08);
+    border: 1px solid rgba(15,23,42,0.08);
+    position: relative;
+  }
+  .badge{
+    display:inline-block;
+    font-size: 11px;
+    font-weight: 900;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(47,107,255,0.12);
+    color: #1e3a8a;
+    margin-bottom: 10px;
+  }
+  .title{
+    font-weight: 900;
+    font-size: 16px;
+    margin-bottom: 6px;
+  }
+  .meta{
+    color: #64748b;
+    font-weight: 700;
+    font-size: 12px;
+  }
+  .empty{
+    color:#64748b;
+    font-weight:800;
+    padding:12px;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1px dashed #cbd5f5;
+  }
+  .notify-block{
+    margin-top: 10px;
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+  }
+  .notify-item{
+    font-size: 12px;
+    font-weight: 800;
+    color: #0f172a;
+    padding: 6px 0;
+    border-top: 1px solid #e5e7eb;
+  }
+  .notify-item:first-child{
+    border-top: 0;
+  }
+  .notify-count{
+    display:inline-flex;
+    align-items:center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 900;
+    color: #991b1b;
+    background: #fee2e2;
+    border-radius: 999px;
+    padding: 4px 8px;
+    margin-top: 10px;
+  }
+  .notify-dot{
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: #ef4444;
+    box-shadow: 0 0 0 4px rgba(239,68,68,0.18);
+  }
+  .listing-badge{
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display:inline-flex;
+    align-items:center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    color: #ef4444;
+    font-size: 11px;
+    font-weight: 900;
+  }
+  .listing-badge::before{
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: #ef4444;
+  }
+  @media (max-width: 980px){
+    .list{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 640px){
+    .my-head{ flex-direction: column; align-items:flex-start; }
+    .list{ grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="my-listings">
+  <div class="my-head">
+    <h1>My listings</h1>
+    <a class="primary-btn" href="{{ url_for('create_listing') }}">Create new listing</a>
+  </div>
+
+  {% if upcoming_requests %}
+    <div class="section-title">Upcoming events</div>
+    <div class="list">
+      {% for req in upcoming_requests %}
+        {% set l = req.listing %}
+        <a class="card" href="{{ url_for('listing_detail', listing_id=l.id, from='my_listings') }}">
+          <span class="badge">{{ l.genres or "Gig" }}</span>
+          <div class="title">{{ l.title }}</div>
+          <div class="meta">
+            {{ l.city or "Location TBA" }}
+            {% if l.date %} • {{ l.date }}{% endif %}
+            {% if l.time %} • {{ l.time }}{% endif %}
+            {% if l.budget %} • ${{ l.budget }}{% endif %}
+          </div>
+          <div class="meta" style="margin-top:6px;">Booked by {{ req.requester.username }}</div>
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if listings %}
+    <div class="section-title">Active listings</div>
+    <div class="list">
+      {% for l in listings %}
+        <a class="card" href="{% if unread_counts.get(l.id) %}{{ url_for('listing_detail', listing_id=l.id, from='my_listings') }}{% else %}{{ url_for('listing_detail', listing_id=l.id) }}{% endif %}">
+          <span class="badge">{{ l.genres or "Gig" }}</span>
+          {% if unread_counts.get(l.id) %}
+            <span class="listing-badge">{{ unread_counts.get(l.id) }}</span>
+          {% endif %}
+          <div class="title">{{ l.title }}</div>
+          <div class="meta">
+            {{ l.city or "Location TBA" }}
+            {% if l.date %} • {{ l.date }}{% endif %}
+            {% if l.time %} • {{ l.time }}{% endif %}
+            {% if l.budget %} • ${{ l.budget }}{% endif %}
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty">
+      You have no listings yet. Create one to get started.
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

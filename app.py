@@ -1,5 +1,5 @@
 
-#Libraries
+import os
 from flask import (
     Flask,
     render_template,
@@ -12,7 +12,7 @@ from flask import (
     session
 )
 from datetime import date, datetime
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -26,24 +26,26 @@ from flask_login import (
 )
 
 #Models
-from djhub.models import Listing  
-from djhub.models import Profile 
-from djhub.models import Campus  
-from djhub.models import Users 
-from djhub.models import Conversation, Message
-from djhub.extensions import db  # db = SQLAlchemy() lives here
+from models import Listing
+from models import Profile
+from models import Campus
+from models import Users
+from models import Genre, Location, BookingRequest, ListingNotification
+from models import Conversation, Message
+from extensions import db
 
 
 
 
 # --- Flask App Initialization ---
 app = Flask(__name__)
-# CRITICAL: Secret key needed for sessions (campus selection) and Flask-Login
 app.config["SECRET_KEY"] = "a_super_secret_key_for_sessions" 
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///djhub.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)
+
+
 
 # --- Flask-Login Initialization ---
 login_manager = LoginManager()
@@ -54,7 +56,49 @@ login_manager.login_message_category = "info"
 @app.get("/l/<int:listing_id>", endpoint="listing_detail")
 def listing_detail(listing_id):
     listing = Listing.query.get_or_404(listing_id)
-    return render_template("listing_detail.html", listing=listing)
+    accepted_request = BookingRequest.query.filter_by(
+        listing_id=listing.id,
+        status="accepted"
+    ).first()
+    if listing.is_archived:
+        if not current_user.is_authenticated:
+            abort(404)
+        is_owner = listing.profile and current_user.id == listing.profile.user_id
+        is_booked_dj = accepted_request and accepted_request.requester_id == current_user.id
+        if not (is_owner or is_booked_dj):
+            abort(404)
+    if current_user.is_authenticated and request.args.get("from") in ("my_listings", "my_bookings"):
+        ListingNotification.query.filter_by(
+            listing_id=listing.id,
+            recipient_id=current_user.id,
+            is_read=False
+        ).update({"is_read": True})
+        db.session.commit()
+    booking_requests = []
+    current_request = None
+    if current_user.is_authenticated and listing.profile:
+        if current_user.id == listing.profile.user_id:
+            request_query = BookingRequest.query.filter_by(listing_id=listing.id)
+            if listing.is_archived:
+                request_query = request_query.filter_by(status="accepted")
+            booking_requests = (request_query
+                                .order_by(BookingRequest.created_at.desc())
+                                .all())
+        else:
+            if listing.is_archived:
+                current_request = accepted_request
+            else:
+                current_request = BookingRequest.query.filter_by(
+                    listing_id=listing.id,
+                    requester_id=current_user.id
+                ).first()
+    return render_template(
+        "listing_detail.html",
+        listing=listing,
+        booking_requests=booking_requests,
+        current_request=current_request,
+        accepted_request=accepted_request,
+    )
 
 def listings_pagination_from_request(per_page=10): #pagination helper
     page = request.args.get("page", 1, type=int)
@@ -62,9 +106,9 @@ def listings_pagination_from_request(per_page=10): #pagination helper
     keyword = (request.args.get("keyword") or "").strip()
     genre = (request.args.get("genre") or "").strip()
     location = (request.args.get("location") or "").strip()
-    date_from = parse_date((request.args.get("date_from") or "").strip())
+    sort = (request.args.get("sort") or "").strip().lower()
 
-    q = Listing.query
+    q = Listing.query.filter(Listing.is_archived.is_(False))
 
     if keyword:
         like = f"%{keyword.lower()}%"
@@ -79,11 +123,16 @@ def listings_pagination_from_request(per_page=10): #pagination helper
     if location:
         q = q.filter(func.lower(Listing.city) == location.lower())
 
-    if date_from:
-        q = q.filter(Listing.date.isnot(None), Listing.date >= date_from)
+    if sort == "price_asc":
+        q = q.order_by(Listing.budget.asc().nullslast(), Listing.created_at.desc())
+    elif sort == "price_desc":
+        q = q.order_by(Listing.budget.desc().nullslast(), Listing.created_at.desc())
+    elif sort == "oldest":
+        q = q.order_by(Listing.created_at.asc())
+    else:
+        q = q.order_by(Listing.created_at.desc())
 
-    return (q.order_by(Listing.date.asc().nullslast(), Listing.created_at.desc())
-             .paginate(page=page, per_page=per_page, error_out=False))
+    return q.paginate(page=page, per_page=per_page, error_out=False)
 
 @app.get("/api/listings")
 def api_listings():
@@ -96,6 +145,7 @@ def api_listings():
                 "title": l.title,
                 "city": l.city,
                 "date": l.date.isoformat() if l.date else None,
+                "time": l.time,
                 "budget": l.budget,
                 "genres": l.genres,
                 "description": l.description,
@@ -109,12 +159,16 @@ def api_listings():
 @app.route("/feed", endpoint="listings_feed")
 def listings_feed(): #display listing feed
     pagination = listings_pagination_from_request(per_page=10)
+    genres = Genre.query.order_by(Genre.name.asc()).all()
+    locations = Location.query.order_by(Location.name.asc()).all()
 
     return render_template(
         "index.html",
         listings=pagination.items,
         has_next=pagination.has_next,
         next_page=pagination.next_num if pagination.has_next else None,
+        genres=genres,
+        locations=locations,
     )
 
 
@@ -144,6 +198,8 @@ def apply_listing_filters(query, *, keyword=None, genre=None, location=None, dat
     if genre:
         query = query.filter(Listing.genres == genre)
 
+    to_int = lambda x: int(x) if (x and str(x).isdigit()) else None
+    
     if location:
         query = query.filter(Listing.city == location)
 
@@ -229,9 +285,41 @@ def logout():
 
 @app.context_processor
 def inject_auth():
+    pending_booking_count = 0
+    booking_updates_count = 0
+    unread_messages_count = 0
+    if current_user.is_authenticated:
+        pending_booking_count = (ListingNotification.query
+                                 .join(Listing, ListingNotification.listing_id == Listing.id)
+                                 .join(Profile, Listing.profile_id == Profile.id)
+                                 .filter(ListingNotification.recipient_id == current_user.id,
+                                         ListingNotification.is_read.is_(False),
+                                         Profile.user_id == current_user.id)
+                                 .count())
+        booking_updates_count = (ListingNotification.query
+                                 .join(Listing, ListingNotification.listing_id == Listing.id)
+                                 .join(Profile, Listing.profile_id == Profile.id)
+                                 .filter(ListingNotification.recipient_id == current_user.id,
+                                         ListingNotification.is_read.is_(False),
+                                         Profile.user_id != current_user.id)
+                                 .count())
+        unread_messages_count = (Message.query
+                                 .join(Conversation, Message.conversation_id == Conversation.id)
+                                 .filter(or_(
+                                     and_(Conversation.user1_id == current_user.id,
+                                          Message.read_by_user1.is_(False),
+                                          Message.sender_id != current_user.id),
+                                     and_(Conversation.user2_id == current_user.id,
+                                          Message.read_by_user2.is_(False),
+                                          Message.sender_id != current_user.id),
+                                 ))
+                                 .count())
     return {
         "current_user": current_user,
-        "is_logged_in": current_user.is_authenticated
+        "is_logged_in": current_user.is_authenticated,
+        "pending_booking_count": pending_booking_count,
+        "booking_updates_count": booking_updates_count,
+        "unread_messages_count": unread_messages_count,
     }
 
 
@@ -246,9 +334,14 @@ def signup():
     if request.method == "POST":
         username = request.form.get("username").strip()
         password = request.form.get("password")
+        confirm_password = request.form.get("confirm_password")
         
         if Users.query.filter(func.lower(Users.username) == username.lower()).first():
             flash("Username already taken. Please choose another.", "danger")
+            return render_template("signup.html", username=username)
+
+        if password != confirm_password:
+            flash("Passwords do not match.", "danger")
             return render_template("signup.html", username=username)
 
         hashed_password = generate_password_hash(password, method='scrypt')
@@ -277,6 +370,142 @@ def signup():
 def listings_redirect():
     return redirect(url_for('listings_feed'))
 
+@app.route("/listings/new", methods=["GET", "POST"], endpoint="create_listing")
+@login_required
+def create_listing():
+    genres = Genre.query.order_by(Genre.name.asc()).all()
+    locations = Location.query.order_by(Location.name.asc()).all()
+
+    profile = Profile.query.filter_by(user_id=current_user.id).first()
+    if not profile:
+        flash("Create a profile before posting a listing.", "danger")
+        return redirect(url_for("listings_feed"))
+
+    if request.method == "POST":
+        title = (request.form.get("title") or "").strip()
+        description = (request.form.get("description") or "").strip()
+        budget_raw = (request.form.get("budget") or "").strip()
+        genre = (request.form.get("genre") or "").strip()
+        location = (request.form.get("location") or "").strip()
+        time_value = (request.form.get("time") or "").strip()
+
+        if not title:
+            flash("Title is required.", "danger")
+            return render_template(
+                "create_listing.html",
+                genres=genres,
+                locations=locations,
+                form=request.form,
+            )
+
+        budget = None
+        if budget_raw:
+            if not budget_raw.isdigit():
+                flash("Budget must be a number.", "danger")
+                return render_template(
+                    "create_listing.html",
+                    genres=genres,
+                    locations=locations,
+                    form=request.form,
+                )
+            budget = int(budget_raw)
+
+        if genre and not Genre.query.filter_by(name=genre).first():
+            flash("Select a valid genre.", "danger")
+            return render_template(
+                "create_listing.html",
+                genres=genres,
+                locations=locations,
+                form=request.form,
+            )
+
+        if location and not Location.query.filter_by(name=location).first():
+            flash("Select a valid location.", "danger")
+            return render_template(
+                "create_listing.html",
+                genres=genres,
+                locations=locations,
+                form=request.form,
+            )
+
+        listing = Listing(
+            title=title,
+            description=description or None,
+            budget=budget,
+            genres=genre or None,
+            city=location or None,
+            time=time_value or None,
+            profile_id=profile.id,
+        )
+        db.session.add(listing)
+        db.session.commit()
+
+        flash("Listing created.", "success")
+        return redirect(url_for("listing_detail", listing_id=listing.id))
+
+    return render_template("create_listing.html", genres=genres, locations=locations, form={})
+
+@app.get("/my-listings", endpoint="my_listings")
+@login_required
+def my_listings():
+    listings = (Listing.query
+                .join(Profile, Listing.profile_id == Profile.id)
+                .filter(Profile.user_id == current_user.id, Listing.is_archived.is_(False))
+                .order_by(Listing.created_at.desc())
+                .all())
+    upcoming_requests = (BookingRequest.query
+                         .join(Listing, BookingRequest.listing_id == Listing.id)
+                         .join(Profile, Listing.profile_id == Profile.id)
+                         .filter(Profile.user_id == current_user.id, BookingRequest.status == "accepted")
+                         .order_by(Listing.created_at.desc())
+                         .all())
+    notifications = (ListingNotification.query
+                     .join(Listing, ListingNotification.listing_id == Listing.id)
+                     .join(Profile, Listing.profile_id == Profile.id)
+                     .filter(ListingNotification.recipient_id == current_user.id,
+                             Profile.user_id == current_user.id)
+                     .order_by(ListingNotification.created_at.desc())
+                     .all())
+    notifications_by_listing = {}
+    unread_counts = {}
+    for note in notifications:
+        notifications_by_listing.setdefault(note.listing_id, []).append(note)
+        if not note.is_read:
+            unread_counts[note.listing_id] = unread_counts.get(note.listing_id, 0) + 1
+    return render_template(
+        "my_listings.html",
+        listings=listings,
+        upcoming_requests=upcoming_requests,
+        notifications_by_listing=notifications_by_listing,
+        unread_counts=unread_counts,
+    )
+
+@app.get("/my-bookings", endpoint="my_bookings")
+@login_required
+def my_bookings():
+    bookings = (BookingRequest.query
+                .join(Listing, BookingRequest.listing_id == Listing.id)
+                .filter(BookingRequest.requester_id == current_user.id,
+                        BookingRequest.status == "accepted")
+                .order_by(Listing.created_at.desc())
+                .all())
+    notifications = (ListingNotification.query
+                     .join(Listing, ListingNotification.listing_id == Listing.id)
+                     .join(Profile, Listing.profile_id == Profile.id)
+                     .filter(ListingNotification.recipient_id == current_user.id,
+                             Profile.user_id != current_user.id)
+                     .order_by(ListingNotification.created_at.desc())
+                     .all())
+    unread_counts = {}
+    for note in notifications:
+        if not note.is_read:
+            unread_counts[note.listing_id] = unread_counts.get(note.listing_id, 0) + 1
+    return render_template(
+        "my_bookings.html",
+        bookings=bookings,
+        unread_counts=unread_counts,
+    )
+
 # --- Data Seeding ---
 def seed_campus_data():
     if not Campus.query.filter_by(slug='ucsc').first():
@@ -288,6 +517,10 @@ def seed_campus_data():
 @app.route("/profiles/search", endpoint="profile_search")
 def profile_search():
     return render_template("profile_search.html")
+
+@app.route("/about", endpoint="about")
+def about():
+    return render_template("about.html")
 
 
 @app.get("/api/profiles/search")
@@ -439,6 +672,101 @@ def get_or_create_conversation(user_a_id: int, user_b_id: int) -> Conversation:
         return Conversation.query.filter_by(user1_id=u1, user2_id=u2).first()
 
 
+@app.post("/listings/<int:listing_id>/request-booking")
+@login_required
+def request_booking(listing_id):
+    listing = Listing.query.get_or_404(listing_id)
+    if listing.is_archived:
+        flash("Listing is no longer accepting requests.", "info")
+        return redirect(url_for("listing_detail", listing_id=listing_id))
+    if not listing.profile:
+        flash("Listing has no owner.", "danger")
+        return redirect(url_for("listing_detail", listing_id=listing_id))
+
+    owner_id = listing.profile.user_id
+    if owner_id == current_user.id:
+        flash("You cannot request your own listing.", "danger")
+        return redirect(url_for("listing_detail", listing_id=listing_id))
+
+    existing = BookingRequest.query.filter_by(
+        listing_id=listing.id,
+        requester_id=current_user.id
+    ).first()
+    if existing:
+        if existing.status == "pending":
+            flash("Booking request already sent.", "info")
+        else:
+            flash(f"Booking request already {existing.status}.", "info")
+        return redirect(url_for("listing_detail", listing_id=listing_id))
+
+    convo = get_or_create_conversation(current_user.id, owner_id)
+    db.session.add(BookingRequest(
+        listing_id=listing.id,
+        requester_id=current_user.id,
+        conversation_id=convo.id,
+    ))
+    db.session.add(ListingNotification(
+        listing_id=listing.id,
+        recipient_id=owner_id,
+        message=f"{current_user.username} would like to book your event.",
+    ))
+    db.session.commit()
+
+    flash("Booking request sent.", "success")
+    return redirect(url_for("listing_detail", listing_id=listing_id))
+
+
+@app.post("/bookings/<int:booking_id>/respond")
+@login_required
+def respond_booking(booking_id):
+    booking = BookingRequest.query.get_or_404(booking_id)
+    listing = Listing.query.get_or_404(booking.listing_id)
+    if not listing.profile or current_user.id != listing.profile.user_id:
+        abort(403)
+
+    action = (request.form.get("action") or "").strip().lower()
+    if action not in ("accept", "decline"):
+        abort(400)
+
+    if booking.status != "pending":
+        flash("Booking request already handled.", "info")
+        return redirect(url_for("listing_detail", listing_id=listing.id))
+
+    if action == "accept":
+        booking.status = "accepted"
+        listing.is_archived = True
+        other_requests = BookingRequest.query.filter(
+            BookingRequest.listing_id == listing.id,
+            BookingRequest.id != booking.id
+        ).all()
+        for req in other_requests:
+            if req.status == "pending":
+                req.status = "declined"
+        convo = Conversation.query.get_or_404(booking.conversation_id)
+        reply = f"Your booking request for \"{listing.title}\" was {booking.status}."
+        msg = make_message(convo, current_user.id, reply)
+        db.session.add(msg)
+        db.session.add(ListingNotification(
+            listing_id=listing.id,
+            recipient_id=booking.requester_id,
+            message=f"Your booking request for \"{listing.title}\" was accepted.",
+        ))
+        db.session.commit()
+
+        flash("Booking request accepted. Listing archived.", "success")
+        return redirect(url_for("my_listings"))
+
+    booking.status = "declined"
+    convo = Conversation.query.get_or_404(booking.conversation_id)
+    reply = f"Your booking request for \"{listing.title}\" was {booking.status}."
+    msg = make_message(convo, current_user.id, reply)
+    db.session.add(msg)
+    db.session.commit()
+
+    flash(f"Booking request {booking.status}.", "success")
+    return redirect(url_for("listing_detail", listing_id=listing.id))
+
+
 
 @app.post("/messages/start")
 @login_required
@@ -486,6 +814,12 @@ def view_conversation(conversation_id):
     
     msgs = convo.messages.order_by(Message.created_at.asc()).all()
 
+    other_id = convo.user2_id if convo.user1_id == current_user.id else convo.user1_id
+    other_user = Users.query.get(other_id)
+    other_profile = Profile.query.filter_by(user_id=other_id).first()
+    other_display = (other_profile.display_name if other_profile else (other_user.username if other_user else "User"))
+    other_username = other_user.username if other_user else "user"
+
     # mark as read for current user
     if convo.user1_id == current_user.id:
         Message.query.filter_by(conversation_id=convo.id).update({"read_by_user1": True})
@@ -493,7 +827,13 @@ def view_conversation(conversation_id):
         Message.query.filter_by(conversation_id=convo.id).update({"read_by_user2": True})
     db.session.commit()
 
-    return render_template("conversation.html", convo=convo, messages=msgs)
+    return render_template(
+        "conversation.html",
+        convo=convo,
+        messages=msgs,
+        other_display=other_display,
+        other_username=other_username,
+    )
 
 
 if __name__ == "__main__":

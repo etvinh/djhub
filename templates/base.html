@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>{% block title %}DJHub{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400" />
     <style>
         :root{
           --nav-bg: rgba(10, 10, 12, 0.72);
@@ -93,10 +94,31 @@
           border-radius: 999px;
           border: 1px solid transparent;
           transition: background 120ms ease, border-color 120ms ease;
+          position: relative;
         }
         .nav-link:hover{
           background: var(--nav-pill);
           border-color: var(--nav-pill-border);
+        }
+        .nav-badge{
+          position: absolute;
+          top: 0;
+          right: -6px;
+          display:inline-flex;
+          align-items:center;
+          gap: 4px;
+          padding: 2px 6px;
+          border-radius: 999px;
+          color: #ef4444;
+          font-size: 11px;
+          font-weight: 900;
+        }
+        .nav-badge::before{
+          content: "";
+          width: 6px;
+          height: 6px;
+          border-radius: 999px;
+          background: #ef4444;
         }
 
         .nav-spacer{ flex: 1; }
@@ -125,15 +147,15 @@
           background: rgba(255,255,255,0.10);
           text-decoration: none;
           transition: filter 120ms ease, transform 120ms ease;
+          position: relative;
         }
         .icon-btn:hover{ filter: brightness(1.05); transform: translateY(-1px); }
 
-        /* make svg icon visible on dark background */
-        .icon-btn img{
-          width: 20px;
-          height: 20px;
-          filter: invert(1);
+        .icon-btn .material-symbols-outlined{
+          font-size: 20px;
+          color: #fff;
           opacity: 0.95;
+          line-height: 1;
         }
 
         .primary-btn{
@@ -194,16 +216,31 @@
 
         <!-- Left links (same buttons as before) -->
         <div class="nav-links">
-          <a class="nav-link" href="{{ url_for('listings_feed') }}">Home</a>
-          <a class="nav-link" href="#">About</a>
+          <a class="nav-link" href="{{ url_for('about') }}">About</a>
           <a class="nav-link" href="{{ url_for('profile_search') }}">Search Profiles</a>
+          <a class="nav-link" href="{{ url_for('my_listings') }}">
+            My Listings
+            {% if pending_booking_count %}
+              <span class="nav-badge">{{ pending_booking_count }}</span>
+            {% endif %}
+          </a>
+          {% if current_user.is_authenticated %}
+            <a class="nav-link" href="{{ url_for('my_bookings') }}">
+              My Bookings
+              {% if booking_updates_count %}
+                <span class="nav-badge">{{ booking_updates_count }}</span>
+              {% endif %}
+            </a>
+          {% endif %}
 
           <!-- Messages icon button (same logic + same route) -->
           <a class="icon-btn"
              href="{% if current_user.is_authenticated %}{{ url_for('inbox') }}{% else %}{{ url_for('go_signup_for_messages') }}{% endif %}"
-             title="Messages">
-            <img src="{{ url_for('static', filename='icons/inbox.svg') }}"
-                 alt="Messages">
+             title="Inbox">
+            <span class="material-symbols-outlined" aria-hidden="true">inbox</span>
+            {% if unread_messages_count %}
+              <span class="nav-badge">{{ unread_messages_count }}</span>
+            {% endif %}
           </a>
         </div>
 

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}About · DJHub{% endblock %}
+
+{% block content %}
+<style>
+  .about-page{
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 16px 80px;
+  }
+  .about-hero{
+    padding: 24px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1px solid rgba(15,23,42,0.08);
+    box-shadow: 0 12px 32px rgba(15,23,42,0.08);
+  }
+  .about-hero h1{
+    margin: 0 0 8px 0;
+    font-size: 32px;
+    font-weight: 900;
+    color: #0f172a;
+  }
+  .about-hero p{
+    margin: 0;
+    color: #475569;
+    font-weight: 600;
+  }
+  .about-grid{
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 18px;
+  }
+  .about-card{
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid #e2e8f0;
+  }
+  .about-card h3{
+    margin: 0 0 6px 0;
+    font-size: 16px;
+    font-weight: 900;
+    color: #0f172a;
+  }
+  .about-card p{
+    margin: 0;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .about-strip{
+    margin-top: 18px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: #f8fafc;
+    border: 1px dashed #cbd5f5;
+    color: #475569;
+    font-weight: 700;
+  }
+  @media (max-width: 720px){
+    .about-grid{ grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="about-page">
+  <div class="about-hero">
+    <h1>About DJHub</h1>
+    <p>Replace this intro with your story, mission, and why DJHub exists.</p>
+  </div>
+
+  <div class="about-grid">
+    <div class="about-card">
+      <h3>What we do</h3>
+      <p>Summarize the platform in 1-2 sentences. Keep it clear and punchy.</p>
+    </div>
+    <div class="about-card">
+      <h3>Who it is for</h3>
+      <p>Add a quick line for event planners, venues, and DJs.</p>
+    </div>
+    <div class="about-card">
+      <h3>How it works</h3>
+      <p>Outline the basic flow: post, request, book, and get paid.</p>
+    </div>
+    <div class="about-card">
+      <h3>What is next</h3>
+      <p>Share roadmap ideas, partnerships, or the community vision.</p>
+    </div>
+  </div>
+
+  <div class="about-strip">
+    Placeholder callout: add contact info, press kit link, or a team blurb.
+  </div>
+</div>
+{% endblock %}

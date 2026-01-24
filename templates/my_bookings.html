@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}My Bookings · DJHub{% endblock %}
+
+{% block content %}
+<style>
+  .my-bookings{
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 28px 16px 60px;
+  }
+  .my-bookings h1{
+    margin:0 0 18px 0;
+    font-size: 28px;
+    font-weight: 900;
+    color: #0f172a;
+  }
+  .booking-list{
+    display:grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .booking-card{
+    display:block;
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px;
+    color: inherit;
+    text-decoration:none;
+    box-shadow: 0 10px 30px rgba(15,23,42,0.08);
+    border: 1px solid rgba(15,23,42,0.08);
+    position: relative;
+  }
+  .booking-title{
+    font-weight: 900;
+    font-size: 16px;
+    margin-bottom: 6px;
+  }
+  .booking-meta{
+    color: #64748b;
+    font-weight: 700;
+    font-size: 12px;
+  }
+  .booking-chip{
+    display:inline-flex;
+    align-items:center;
+    height: 26px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: #ecfeff;
+    color: #0e7490;
+    font-weight: 900;
+    font-size: 11px;
+    margin-bottom: 10px;
+  }
+  .listing-badge{
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display:inline-flex;
+    align-items:center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    color: #ef4444;
+    font-size: 11px;
+    font-weight: 900;
+  }
+  .listing-badge::before{
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: #ef4444;
+  }
+  .empty{
+    color:#64748b;
+    font-weight:800;
+    padding:12px;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1px dashed #cbd5f5;
+  }
+  @media (max-width: 980px){
+    .booking-list{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 640px){
+    .booking-list{ grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="my-bookings">
+  <h1>My bookings</h1>
+
+  {% if bookings %}
+    <div class="booking-list">
+      {% for booking in bookings %}
+        {% set l = booking.listing %}
+        <a class="booking-card" href="{{ url_for('listing_detail', listing_id=l.id, from='my_bookings') }}">
+          <span class="booking-chip">Accepted</span>
+          {% if unread_counts.get(l.id) %}
+            <span class="listing-badge">{{ unread_counts.get(l.id) }}</span>
+          {% endif %}
+          <div class="booking-title">{{ l.title }}</div>
+          <div class="booking-meta">
+            {{ l.city or "Location TBA" }}
+            {% if l.date %} • {{ l.date }}{% endif %}
+            {% if l.time %} • {{ l.time }}{% endif %}
+            {% if l.budget %} • ${{ l.budget }}{% endif %}
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty">
+      You do not have any accepted bookings yet.
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

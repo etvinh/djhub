@@ -2,6 +2,61 @@
 {% block title %}Listing · DJHub{% endblock %}
 
 {% block content %}
+<style>
+  .booking-actions{
+    margin-top: 12px;
+    display:flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .booking-btn{
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 0;
+    background: #111827;
+    color: #fff;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .booking-btn.secondary{
+    background: #e5e7eb;
+    color: #111827;
+  }
+  .booking-chip{
+    display:inline-flex;
+    align-items:center;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #111827;
+    font-weight: 800;
+    font-size: 12px;
+  }
+  .archived-banner{
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: #f1f5f9;
+    color: #0f172a;
+    font-weight: 800;
+    font-size: 12px;
+    border: 1px solid #e2e8f0;
+  }
+  .accept-warning{
+    display:inline-flex;
+    align-items:center;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: #fffbeb;
+    color: #b45309;
+    border: 1px solid #fcd34d;
+    font-weight: 800;
+    font-size: 11px;
+  }
+</style>
 <div style="max-width: 780px; margin: 24px auto; padding: 0 16px;">
   <a href="{{ url_for('listings_feed') }}" style="display:inline-block;margin-bottom:16px;color:#2563eb;text-decoration:none;">
     ← Back to feed
@@ -9,9 +64,13 @@
 
   <div style="padding:16px;border:1px solid #e5e7eb;border-radius:16px;background:#fff;">
     <h1 style="margin:0 0 8px 0;">{{ listing.title }}</h1>
+    {% if listing.is_archived %}
+      <div class="archived-banner">This listing is archived and only visible to the planner and booked DJ.</div>
+    {% endif %}
 
     <div style="color:#6b7280; display:flex; flex-wrap:wrap; gap:10px; margin-top:6px;">
       {% if listing.date %}<span><strong>Date:</strong> {{ listing.date.strftime("%b %d, %Y") }}</span>{% endif %}
+      {% if listing.time %}<span><strong>Time:</strong> {{ listing.time }}</span>{% endif %}
       {% if listing.city %}<span><strong>Location:</strong> {{ listing.city }}</span>{% endif %}
       {% if listing.budget %}<span><strong>Budget:</strong> ${{ listing.budget }}</span>{% endif %}
       {% if listing.genres %}<span><strong>Genre:</strong> {{ listing.genres }}</span>{% endif %}
@@ -45,6 +104,53 @@
         <p style="margin:0;color:#6b7280;">Posted by DJHub</p>
       {% endif %}
     </div>
+
+    {% if listing.profile and current_user.is_authenticated %}
+      {% if current_user.id != listing.profile.user_id %}
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid #e5e7eb;">
+          {% if listing.is_archived %}
+            {% if current_request %}
+              <span class="booking-chip">Booking {{ current_request.status }}</span>
+            {% else %}
+              <span class="booking-chip">Listing archived</span>
+            {% endif %}
+          {% else %}
+            {% if current_request %}
+              <span class="booking-chip">Request {{ current_request.status }}</span>
+            {% else %}
+              <form method="POST" action="{{ url_for('request_booking', listing_id=listing.id) }}">
+                <button type="submit" class="booking-btn">Request booking</button>
+              </form>
+            {% endif %}
+          {% endif %}
+        </div>
+      {% elif booking_requests %}
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid #e5e7eb;">
+          <h3 style="margin:0 0 10px 0;">Booking requests</h3>
+          {% for req in booking_requests %}
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #f3f4f6;">
+              <div style="font-weight:800;color:#111827;">
+                {{ req.requester.username }}
+                {% if req.status == "accepted" %}
+                  <span style="color:#6b7280;font-weight:700;">booked the event</span>
+                {% else %}
+                  <span style="color:#6b7280;font-weight:700;">requested to book</span>
+                {% endif %}
+              </div>
+              {% if req.status == "pending" and not listing.is_archived %}
+                <form method="POST" action="{{ url_for('respond_booking', booking_id=req.id) }}" class="booking-actions">
+                  <button type="submit" name="action" value="accept" class="booking-btn">Accept</button>
+                  <span class="accept-warning">Accepting archives the listing</span>
+                  <button type="submit" name="action" value="decline" class="booking-btn secondary">Decline</button>
+                </form>
+              {% else %}
+                <span class="booking-chip">{{ req.status }}</span>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endif %}
 
   </div>
 </div>

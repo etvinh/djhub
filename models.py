@@ -1,11 +1,11 @@
-from djhub.extensions import db
+from extensions import db
 from datetime import datetime
 from flask_login import UserMixin
 from sqlalchemy import Date # Import Date type for Listing model
 
 # 1. Campus Model (For location selection)
 class Campus(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True) 
     name = db.Column(db.String(100), unique=True, nullable=False)
     slug = db.Column(db.String(50), unique=True, nullable=False) # e.g., 'ucsc'
     is_active = db.Column(db.Boolean, default=True)
@@ -61,10 +61,12 @@ class Listing(db.Model):
     city = db.Column(db.String(120))
     # Corrected the date column type
     date = db.Column(Date) 
+    time = db.Column(db.String(20))
     budget = db.Column(db.Integer)
     genres = db.Column(db.String(200))
     description = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_archived = db.Column(db.Boolean, default=False, nullable=False)
     profile_id = db.Column(
         db.Integer,
         db.ForeignKey("profile.id"),
@@ -76,6 +78,53 @@ class Listing(db.Model):
     
     def __repr__(self):
         return f"<Listing {self.title}>"
+
+class BookingRequest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    listing_id = db.Column(db.Integer, db.ForeignKey("listing.id"), nullable=False, index=True)
+    requester_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    conversation_id = db.Column(db.Integer, db.ForeignKey("conversations.id"), nullable=False, index=True)
+    status = db.Column(db.String(20), nullable=False, default="pending")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint("listing_id", "requester_id", name="uq_booking_request"),
+    )
+
+    requester = db.relationship("Users")
+    listing = db.relationship("Listing")
+    conversation = db.relationship("Conversation")
+
+    def __repr__(self):
+        return f"<BookingRequest listing_id={self.listing_id} requester_id={self.requester_id} status={self.status}>"
+
+class ListingNotification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    listing_id = db.Column(db.Integer, db.ForeignKey("listing.id"), nullable=False, index=True)
+    recipient_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    message = db.Column(db.String(255), nullable=False)
+    is_read = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    recipient = db.relationship("Users")
+    listing = db.relationship("Listing")
+
+    def __repr__(self):
+        return f"<ListingNotification listing_id={self.listing_id} recipient_id={self.recipient_id} is_read={self.is_read}>"
+
+class Genre(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+
+    def __repr__(self):
+        return f"<Genre {self.name}>"
+
+class Location(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), unique=True, nullable=False)
+
+    def __repr__(self):
+        return f"<Location {self.name}>"
 
 class Conversation(db.Model):
     __tablename__ = "conversations"

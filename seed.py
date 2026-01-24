@@ -1,6 +1,6 @@
 from app import app
-from djhub.extensions import db
-from djhub.models import Users, Profile, Campus, Listing
+from extensions import db
+from models import Users, Profile, Campus, Listing, Genre, Location
 from werkzeug.security import generate_password_hash
 
 from datetime import date, timedelta
@@ -10,7 +10,7 @@ import random
 # Seed constants
 # --------------------
 USERNAMES = ["djalex", "djethan", "djmia", "djzoe"]
-CITIES = ["New York", "Los Angeles", "Chicago", "Miami"]
+CITIES = ["Santa Cruz"]
 GENRES = ["House", "Techno", "HipHop", "EDM", "Lo-Fi"]
 
 USER_SEED = [
@@ -74,6 +74,14 @@ with app.app_context():
     today = date.today()
 
     NUM_LISTINGS = 20
+    TIMES = [
+        "6:00 PM",
+        "7:30 PM",
+        "8:00 PM",
+        "8:30 PM",
+        "9:00 PM",
+        "10:00 PM",
+    ]
 
     for i in range(NUM_LISTINGS):
         p = pick(profiles)  # uses your helper
@@ -82,6 +90,7 @@ with app.app_context():
             title="DJ Booking",
             city=pick(CITIES),
             date=date.today() + timedelta(days=pick(range(1, 30))),
+            time=pick(TIMES),
             budget=pick(range(200, 801)),
             genres=pick(GENRES),
             description="Looking for a DJ.",
@@ -91,6 +100,14 @@ with app.app_context():
         db.session.add(listing)
 
     print(f"🎤 Seeded {NUM_LISTINGS} listings")
+
+    # --------------------
+    # Genres + Locations
+    # --------------------
+    for name in sorted(set(GENRES)):
+        db.session.add(Genre(name=name))
+
+    db.session.add(Location(name="Santa Cruz"))
 
 
     # --------------------

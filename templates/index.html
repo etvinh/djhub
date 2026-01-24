@@ -42,7 +42,7 @@
   /* ===== Hero (matches your reference) ===== */
   .hero{
     position: relative;
-    min-height: 340px;
+    min-height: 410px;
     border-radius: 18px;
     overflow: hidden;
     background:
@@ -108,23 +108,25 @@
 
   /* ===== Search bar visual (no backend changes) ===== */
   .search-wrap{
-    max-width: 860px;
-    margin: 18px auto 0;
+    max-width: 900px;
+    margin: 36px auto 0;
     padding: 0 16px;
-    transform: translateY(18px);
+    
+    
   }
   .searchbar{
     background: rgba(255,255,255,0.95);
     border-radius: 12px;
     padding: 10px;
     display: grid;
-    grid-template-columns: 1.2fr 1fr 1fr 1fr 44px;
+    grid-template-columns: repeat(4, 1fr);
     gap: 10px;
     box-shadow: 0 18px 50px rgba(0,0,0,0.28);
     border: 1px solid rgba(255,255,255,0.55);
   }
   .searchbar input{
     height: 40px;
+
     border-radius: 10px;
     border: 1px solid #e5e7eb;
     padding: 0 12px;
@@ -133,7 +135,22 @@
     color: #0f172a;
     background: #fff;
   }
+  .searchbar select{
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    padding: 0 32px 0 12px;
+    outline: none;
+    font-weight: 650;
+    color: #0f172a;
+    background: #fff;
+    appearance: none;
+  }
   .searchbar input:focus{
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 4px rgba(147,197,253,0.35);
+  }
+  .searchbar select:focus{
     border-color: #93c5fd;
     box-shadow: 0 0 0 4px rgba(147,197,253,0.35);
   }
@@ -154,6 +171,13 @@
     padding: 0 16px 70px;
   }
 
+  .section-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 16px;
+    margin: 56px 0 12px;
+  }
   .section-title{
     margin: 56px 0 12px;
     font-size: 13px;
@@ -162,11 +186,46 @@
     font-weight: 900;
     color: #0f172a;
   }
+  .section-row .section-title{
+    margin: 0;
+  }
+  .sort-form{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+  }
+  .sort-label{
+    font-weight: 900;
+    font-size: 12px;
+    color: #0f172a;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .sort-form select{
+    height: 40px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid #cbd5f5;
+    font-weight: 800;
+    font-size: 13px;
+    color: #0f172a;
+    background: #fff;
+  }
+  .sort-form button{
+    height: 40px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 10px;
+    background: #0f172a;
+    color: #fff;
+    font-weight: 900;
+    cursor: pointer;
+  }
 
   /* ===== Cards grid ===== */
   .listings{
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px;
   }
 
@@ -182,7 +241,7 @@
     box-shadow: var(--shadow2);
     padding: 14px;
     transition: transform 120ms ease, box-shadow 120ms ease;
-    min-height: 150px;
+    min-height: 250px;
   }
   .card:hover{
     transform: translateY(-2px);
@@ -274,6 +333,11 @@
     .listings{ grid-template-columns: 1fr; }
     .hero h1{ font-size: 34px; }
     .section-title{ margin-top: 52px; }
+    .section-row{
+      flex-direction: column;
+      align-items:flex-start;
+      margin-top: 52px;
+    }
   }
 </style>
 
@@ -288,7 +352,6 @@
 
         <!-- Optional CTAs (front-end only). Remove if you don’t want extra UI. -->
         <div class="hero-ctas">
-          <a class="pill primary" href="{{ url_for('listings_feed') }}">Find gigs</a>
           <a class="pill" href="{{ url_for('profile_search') }}">Find DJ  🔍</a>
         </div>
       </div>
@@ -298,9 +361,22 @@
     <div class="search-wrap">
       <form class="searchbar" method="get" action="{{ url_for('listings_feed') }}">
         <input name="keyword" placeholder="Keyword" value="{{ request.args.get('keyword','') }}" />
-        <input name="genre" placeholder="Genre" value="{{ request.args.get('genre','') }}" />
-        <input name="location" placeholder="Location" value="{{ request.args.get('location','') }}" />
-        <input type="date" name="date_from" value="{{ request.args.get('date_from','') }}" />
+        <select name="genre" aria-label="Genre">
+          <option value="">Genre</option>
+          {% for g in genres %}
+            <option value="{{ g.name }}" {% if request.args.get('genre') == g.name %}selected{% endif %}>
+              {{ g.name }}
+            </option>
+          {% endfor %}
+        </select>
+        <select name="location" aria-label="Location">
+          <option value="">Location</option>
+          {% for loc in locations %}
+            <option value="{{ loc.name }}" {% if request.args.get('location') == loc.name %}selected{% endif %}>
+              {{ loc.name }}
+            </option>
+          {% endfor %}
+        </select>
         <button type="submit">Search</button>
       </form>
     </div>
@@ -308,7 +384,21 @@
   </div>
 
   <div class="wrap">
-    <div class="section-title">Latest gigs</div>
+    <div class="section-row">
+      <div class="section-title">Latest gigs</div>
+      <form class="sort-form" method="get" action="{{ url_for('listings_feed') }}">
+        <span class="sort-label">Sort by:</span>
+        <select name="sort" aria-label="Sort">
+          <option value="newest" {% if request.args.get('sort','newest') == 'newest' %}selected{% endif %}>Newest</option>
+          <option value="oldest" {% if request.args.get('sort') == 'oldest' %}selected{% endif %}>Oldest</option>
+          <option value="price_asc" {% if request.args.get('sort') == 'price_asc' %}selected{% endif %}>Price: Low to High</option>
+          <option value="price_desc" {% if request.args.get('sort') == 'price_desc' %}selected{% endif %}>Price: High to Low</option>
+        </select>
+        <input type="hidden" name="keyword" value="{{ request.args.get('keyword','') }}">
+        <input type="hidden" name="genre" value="{{ request.args.get('genre','') }}">
+        <input type="hidden" name="location" value="{{ request.args.get('location','') }}">
+      </form>
+    </div>
 
     <!-- KEEP your ids/classes so JS/back-end remains unchanged -->
     <ul id="listing-feed" class="listings">
@@ -324,7 +414,7 @@
             <div class="title">{{ l.title }}</div>
 
             <div class="meta">
-              {{ l.city or "Location TBA" }}{% if l.date %} • {{ l.date }}{% endif %}
+              {{ l.city or "Location TBA" }}{% if l.date %} • {{ l.date }}{% endif %}{% if l.time %} • {{ l.time }}{% endif %}
             </div>
 
             <div class="desc">
@@ -388,7 +478,7 @@ const res = await fetch(`/api/listings?${params.toString()}`);
             <div class="title">${esc(l.title || "")}</div>
 
             <div class="meta">
-              ${esc(l.city || "Location TBA")}${l.date ? ' • ' + esc(l.date) : ''}
+              ${esc(l.city || "Location TBA")}${l.date ? ' • ' + esc(l.date) : ''}${l.time ? ' • ' + esc(l.time) : ''}
             </div>
 
             <div class="desc">
@@ -408,7 +498,13 @@ const res = await fetch(`/api/listings?${params.toString()}`);
       }
     });
   }
+
+  const sortSelect = document.querySelector('.sort-form select[name="sort"]');
+  if (sortSelect) {
+    sortSelect.addEventListener('change', () => {
+      sortSelect.form.submit();
+    });
+  }
 </script>
 
 {% endblock %}
-
