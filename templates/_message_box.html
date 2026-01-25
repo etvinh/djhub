@@ -12,12 +12,14 @@
   <div id="msg-{{ recipient_id }}" style="display:none;margin-top:10px;">
     {% if is_logged_in %}
       <form method="post" action="{{ url_for('start_conversation') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="recipient_id" value="{{ recipient_id }}">
 
         <textarea name="body"
           rows="3"
-          placeholder="Write a message… (optional)"
-          style="width:100%;padding:8px;border-radius:8px;"></textarea>
+          placeholder="Write a message…"
+          style="width:100%;padding:8px;border-radius:8px;"
+          required></textarea>
 
         <div style="margin-top:6px;display:flex;gap:8px;">
           <button type="submit">Send message</button>

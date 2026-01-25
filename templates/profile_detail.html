@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_message_box.html" import message_box with context %}
-{% block title %}{{ profile.display_name }} · DJHub{% endblock %}
+{% block title %}{{ profile.user.username }} · DJHub{% endblock %}
 
 {% block content %}
 
@@ -61,7 +61,7 @@
   .avatar{
     width: 96px;
     height: 96px;
-    border-radius: 22px;
+    border-radius: 999px;
     object-fit: cover;
     border: 1px solid rgba(255,255,255,0.16);
     background: rgba(255,255,255,0.06);
@@ -174,7 +174,7 @@
       />
 
       <div class="hero-main">
-        <h1 class="name">{{ profile.display_name }}</h1>
+        <h1 class="name">{{ profile.user.username }}</h1>
 
         <div class="handle">
           <span>@{{ profile.user.username }}</span>

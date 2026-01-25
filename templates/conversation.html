@@ -52,6 +52,13 @@
     flex-direction:column;
     line-height: 1.15;
   }
+  .chat-header .avatar{
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+  }
   .chat-header .title .name{
     font-weight: 900;
     color: var(--text);
@@ -171,6 +178,7 @@
 
     <div class="chat-header">
       <a class="back" href="{{ url_for('inbox') }}">← Inbox</a>
+      <img class="avatar" src="{{ other_avatar }}" alt="Profile">
       <div class="title">
         <div class="name">{{ other_display }}</div>
         <div class="sub">@{{ other_username }} • DJHub</div>
@@ -196,6 +204,7 @@
 
     <div class="composer">
       <form method="POST" action="{{ url_for('view_conversation', conversation_id=convo.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="composer-inner">
           <textarea
             id="msgBody"

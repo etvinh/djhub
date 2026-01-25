@@ -45,7 +45,6 @@ class Profile(db.Model):
 
     user = db.relationship("Users", back_populates="profiles") #profile inherets user
 
-    display_name = db.Column(db.String(120), nullable=False)
     city = db.Column(db.String(120))
     genres = db.Column(db.String(200))
     bio = db.Column(db.Text)
@@ -53,7 +52,7 @@ class Profile(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):
-        return f"<Profile id={self.id} user_id={self.user_id} display_name={self.display_name}>"
+        return f"<Profile id={self.id} user_id={self.user_id}>"
 # 4. Listing Model
 class Listing(db.Model):
     id = db.Column(db.Integer, primary_key=True)

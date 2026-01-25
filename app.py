@@ -1,5 +1,9 @@
-
 import os
+import re
+import uuid
+from collections import defaultdict, deque
+from time import time
+from urllib.parse import urlparse, urljoin
 from flask import (
     Flask,
     render_template,
@@ -11,21 +15,22 @@ from flask import (
     flash,
     session
 )
-from datetime import date, datetime
+from datetime import datetime
 from sqlalchemy import or_, func, and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
+from flask_wtf import CSRFProtect
 from flask_login import (
     LoginManager,
-    UserMixin,
     login_user,
     logout_user,
     current_user,
     login_required
 )
 
-#Models
+# Models
 from models import Listing
 from models import Profile
 from models import Campus
@@ -33,17 +38,43 @@ from models import Users
 from models import Genre, Location, BookingRequest, ListingNotification
 from models import Conversation, Message
 from extensions import db
-
-
-
+ 
 
 # --- Flask App Initialization ---
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "a_super_secret_key_for_sessions" 
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or os.urandom(32)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///djhub.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["UPLOAD_FOLDER"] = os.path.join("static", "uploads")
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production"
 
 db.init_app(app)
+csrf = CSRFProtect(app)
+
+USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{3,20}$")
+MAX_MESSAGE_LENGTH = 1000
+rate_limit_store = defaultdict(deque)
+
+def is_rate_limited(key: str, limit: int, window_seconds: int) -> bool:
+    now = time()
+    bucket = rate_limit_store[key]
+    while bucket and now - bucket[0] > window_seconds:
+        bucket.popleft()
+    if len(bucket) >= limit:
+        return True
+    bucket.append(now)
+    return False
+
+def is_safe_redirect(target: str) -> bool:
+    if not target:
+        return False
+    ref_url = urlparse(request.host_url)
+    test_url = urlparse(urljoin(request.host_url, target))
+    return test_url.scheme in ("http", "https") and ref_url.netloc == test_url.netloc
+
 
 
 
@@ -103,9 +134,9 @@ def listing_detail(listing_id):
 def listings_pagination_from_request(per_page=10): #pagination helper
     page = request.args.get("page", 1, type=int)
 
-    keyword = (request.args.get("keyword") or "").strip()
-    genre = (request.args.get("genre") or "").strip()
-    location = (request.args.get("location") or "").strip()
+    keyword = (request.args.get("keyword") or "").strip()[:100]
+    genre = (request.args.get("genre") or "").strip()[:100]
+    location = (request.args.get("location") or "").strip()[:100]
     sort = (request.args.get("sort") or "").strip().lower()
 
     q = Listing.query.filter(Listing.is_archived.is_(False))
@@ -170,49 +201,6 @@ def listings_feed(): #display listing feed
         genres=genres,
         locations=locations,
     )
-
-
-
-from datetime import datetime, date as date_cls
-from sqlalchemy import or_, func
-
-from datetime import datetime
-
-def parse_date(s):
-   
-    try:
-        return datetime.strptime(s, "%Y-%m-%d").date()
-    except ValueError:
-        return None
-
-def apply_listing_filters(query, *, keyword=None, genre=None, location=None, date_from=None, date_to=None):
-    if keyword:
-        like = f"%{keyword.strip().lower()}%"
-        query = query.filter(or_(
-            func.lower(Listing.title).like(like),
-            func.lower(Listing.description).like(like),
-            func.lower(Listing.city).like(like),
-            func.lower(Listing.genres).like(like),
-        ))
-
-    if genre:
-        query = query.filter(Listing.genres == genre)
-
-    to_int = lambda x: int(x) if (x and str(x).isdigit()) else None
-    
-    if location:
-        query = query.filter(Listing.city == location)
-
-    # Only add "date is not null" once, if any date filter exists
-    if date_from or date_to:
-        query = query.filter(Listing.date.isnot(None))
-        if date_from:
-            query = query.filter(Listing.date >= date_from)
-        if date_to:
-            query = query.filter(Listing.date <= date_to)
-
-    return query
-
 # --- NEW: Campus Selection Route (Root) ---
 @app.route("/", methods=["GET", "POST"], endpoint="select_campus")
 def select_campus():
@@ -259,8 +247,16 @@ def login():
         return redirect(url_for("listings_feed"))
         
     if request.method == "POST":
-        username = request.form.get("username").strip()
+        if is_rate_limited(f"login:{request.remote_addr}", 10, 60):
+            flash("Too many login attempts. Try again in a minute.", "danger")
+            return redirect(url_for("login"))
+        username = (request.form.get("username") or "").strip()
+        if username.startswith("@"):
+            username = username[1:]
         password = request.form.get("password")
+        if not USERNAME_RE.match(username):
+            flash("Login failed. Check your username and password.", "danger")
+            return redirect(url_for("login"))
 
         user = Users.query.filter(func.lower(Users.username) == username.lower()).first()
 
@@ -268,7 +264,9 @@ def login():
             login_user(user)
             flash(f"Welcome back, {user.username}!", "success")
             next_page = request.args.get("next")
-            return redirect(next_page or url_for("listings_feed"))
+            if next_page and is_safe_redirect(next_page):
+                return redirect(next_page)
+            return redirect(url_for("listings_feed"))
         else:
             flash("Login failed. Check your username and password.", "danger")
 
@@ -288,7 +286,9 @@ def inject_auth():
     pending_booking_count = 0
     booking_updates_count = 0
     unread_messages_count = 0
+    current_user_profile = None
     if current_user.is_authenticated:
+        current_user_profile = Profile.query.filter_by(user_id=current_user.id).first()
         pending_booking_count = (ListingNotification.query
                                  .join(Listing, ListingNotification.listing_id == Listing.id)
                                  .join(Profile, Listing.profile_id == Profile.id)
@@ -320,6 +320,7 @@ def inject_auth():
         "pending_booking_count": pending_booking_count,
         "booking_updates_count": booking_updates_count,
         "unread_messages_count": unread_messages_count,
+        "current_user_profile": current_user_profile,
     }
 
 
@@ -332,9 +333,23 @@ def signup():
         return redirect(url_for("listings_feed"))
         
     if request.method == "POST":
-        username = request.form.get("username").strip()
+        if is_rate_limited(f"signup:{request.remote_addr}", 5, 60):
+            flash("Too many signups. Try again in a minute.", "danger")
+            return redirect(url_for("signup"))
+        username = (request.form.get("username") or "").strip()
+        if username.startswith("@"):
+            username = username[1:]
         password = request.form.get("password")
         confirm_password = request.form.get("confirm_password")
+
+
+        if not USERNAME_RE.match(username):
+            flash("Username must be 3-20 characters and only letters, numbers, or underscores.", "danger")
+            return render_template("signup.html", username=username)
+
+        if not password or len(password) < 8 or not re.search(r"[A-Za-z]", password) or not re.search(r"\d", password):
+            flash("Password must be at least 8 characters and include a letter and a number.", "danger")
+            return render_template("signup.html", username=username)
         
         if Users.query.filter(func.lower(Users.username) == username.lower()).first():
             flash("Username already taken. Please choose another.", "danger")
@@ -348,8 +363,11 @@ def signup():
         
         new_user = Users(username=username, password=hashed_password)
         db.session.add(new_user)
-        db.session.commit() 
-        
+        db.session.commit()
+        if not Profile.query.filter_by(user_id=new_user.id).first():
+            db.session.add(Profile(user_id=new_user.id))
+            db.session.commit()
+
         flash("Registration successful! Please log in.", "success")
         return redirect(url_for("login"))
 
@@ -518,6 +536,50 @@ def seed_campus_data():
 def profile_search():
     return render_template("profile_search.html")
 
+@app.route("/my-profile", methods=["GET", "POST"], endpoint="my_profile")
+@login_required
+def my_profile():
+    profile = Profile.query.filter_by(user_id=current_user.id).first()
+    genres = Genre.query.order_by(Genre.name.asc()).all()
+    locations = Location.query.order_by(Location.name.asc()).all()
+    if request.method == "POST":
+        city = (request.form.get("city") or "").strip()
+        genres_value = (request.form.get("genres") or "").strip()
+        bio = (request.form.get("bio") or "").strip()
+        avatar_file = request.files.get("avatar_file")
+
+        if not profile:
+            profile = Profile(user_id=current_user.id)
+            db.session.add(profile)
+
+        if city and not Location.query.filter_by(name=city).first():
+            flash("Select a valid location.", "danger")
+            return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations)
+        if genres_value and not Genre.query.filter_by(name=genres_value).first():
+            flash("Select a valid genre.", "danger")
+            return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations)
+
+        profile.city = city or None
+        profile.genres = genres_value or None
+        profile.bio = bio or None
+        if avatar_file and avatar_file.filename:
+            filename = secure_filename(avatar_file.filename)
+            ext = os.path.splitext(filename)[1].lower()
+            if ext not in {".jpg", ".jpeg", ".png", ".gif", ".webp"}:
+                flash("Avatar must be an image file.", "danger")
+                return render_template("my_profile.html", profile=profile, form=request.form)
+            os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+            unique_name = f"{uuid.uuid4().hex}{ext}"
+            save_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
+            avatar_file.save(save_path)
+            profile.avatar_url = f"/{save_path}"
+        db.session.commit()
+
+        flash("Profile saved.", "success")
+        return redirect(url_for("my_profile"))
+
+    return render_template("my_profile.html", profile=profile, form={}, genres=genres, locations=locations)
+
 @app.route("/about", endpoint="about")
 def about():
     return render_template("about.html")
@@ -525,7 +587,7 @@ def about():
 
 @app.get("/api/profiles/search")
 def profile_search_api():
-    q = (request.args.get("q") or "").strip()
+    q = (request.args.get("q") or "").strip()[:100]
 
     if not q:
         return jsonify({"profiles": []})
@@ -538,7 +600,6 @@ def profile_search_api():
         .filter(
             or_(
                 func.lower(Users.username).like(like),
-                func.lower(Profile.display_name).like(like),
                 func.lower(Profile.city).like(like),
                 func.lower(Profile.genres).like(like),
             )
@@ -553,7 +614,6 @@ def profile_search_api():
             {
                 "id": p.id,
                 "username": p.user.username,
-                "display_name": p.display_name,
                 "city": p.city or "",
                 "genres": p.genres or "",
                 "avatar_url": p.avatar_url or "/static/default-avatar.png",
@@ -612,7 +672,7 @@ def inbox():
 
         items.append({
             "convo": c,
-            "other_name": (other_profile.display_name if other_profile else (other_user.username if other_user else "User")),
+            "other_name": (other_user.username if other_user else "User"),
             "other_username": (other_user.username if other_user else "user"),
             "avatar": (other_profile.avatar_url if other_profile and other_profile.avatar_url else "/static/default-avatar.png"),
             "last_text": (last_msg.body if last_msg else ""),
@@ -772,7 +832,11 @@ def respond_booking(booking_id):
 @login_required
 def start_conversation():
     recipient_raw = (request.form.get("recipient_id") or "").strip()
-    body = (request.form.get("body") or "").strip()  # optional
+    body = (request.form.get("body") or "").strip()
+
+    if is_rate_limited(f"messages_start:{request.remote_addr}", 15, 60):
+        flash("You're sending messages too quickly. Try again in a minute.", "danger")
+        return redirect(request.referrer or url_for("inbox"))
 
     if not recipient_raw.isdigit():
         flash("Invalid recipient.", "danger")
@@ -787,11 +851,16 @@ def start_conversation():
 
     convo = get_or_create_conversation(current_user.id, recipient.id)
 
-    # If you want “Send” to open DM even with empty body, allow it:
-    if body:
-        msg = make_message(convo, current_user.id, body)
-        db.session.add(msg)
-        db.session.commit()
+    if not body:
+        flash("Message cannot be empty.", "danger")
+        return redirect(request.referrer or url_for("inbox"))
+    if len(body) > MAX_MESSAGE_LENGTH:
+        flash("Message is too long.", "danger")
+        return redirect(request.referrer or url_for("inbox"))
+
+    msg = make_message(convo, current_user.id, body)
+    db.session.add(msg)
+    db.session.commit()
 
     return redirect(url_for("view_conversation", conversation_id=convo.id))
 
@@ -806,10 +875,15 @@ def view_conversation(conversation_id):
         abort(403)
     if request.method == "POST":
         body = (request.form.get("body") or "").strip()
-        if body:
-            msg = make_message(convo, current_user.id, body)
-            db.session.add(msg)
-            db.session.commit()
+        if not body:
+            flash("Message cannot be empty.", "danger")
+            return redirect(url_for("view_conversation", conversation_id=conversation_id))
+        if len(body) > MAX_MESSAGE_LENGTH:
+            flash("Message is too long.", "danger")
+            return redirect(url_for("view_conversation", conversation_id=conversation_id))
+        msg = make_message(convo, current_user.id, body)
+        db.session.add(msg)
+        db.session.commit()
         return redirect(url_for("view_conversation", conversation_id=conversation_id))
     
     msgs = convo.messages.order_by(Message.created_at.asc()).all()
@@ -817,7 +891,8 @@ def view_conversation(conversation_id):
     other_id = convo.user2_id if convo.user1_id == current_user.id else convo.user1_id
     other_user = Users.query.get(other_id)
     other_profile = Profile.query.filter_by(user_id=other_id).first()
-    other_display = (other_profile.display_name if other_profile else (other_user.username if other_user else "User"))
+    other_display = (other_user.username if other_user else "User")
+    other_avatar = (other_profile.avatar_url if other_profile and other_profile.avatar_url else "/static/default-avatar.png")
     other_username = other_user.username if other_user else "user"
 
     # mark as read for current user
@@ -833,6 +908,7 @@ def view_conversation(conversation_id):
         messages=msgs,
         other_display=other_display,
         other_username=other_username,
+        other_avatar=other_avatar,
     )
 
 
@@ -840,4 +916,4 @@ if __name__ == "__main__":
     with app.app_context():
         db.create_all()
         seed_campus_data()
-    app.run(debug=True)
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1")

@@ -41,11 +41,12 @@ with app.app_context():
     # Users + Profiles
     # --------------------
     users = []
+    total_profiles = 0
 
     for username, pw in USER_SEED:
         user = Users(
             username=username,
-            password=generate_password_hash(pw, method="scrypt")  # ✅ matches your login code
+            password=generate_password_hash(pw, method="scrypt"),  # ✅ matches your login code
         )
         db.session.add(user)
         db.session.flush()  # 🔑 ensures user.id exists
@@ -54,7 +55,6 @@ with app.app_context():
         profiles = [
             Profile(
                 user_id=user.id,
-                display_name=f"{username.title()} (DJ)",
                 city=pick(CITIES),
                 genres=pick(GENRES),
                 bio="DJ available for gigs and events.",
@@ -64,15 +64,14 @@ with app.app_context():
         ]
 
         db.session.add_all(profiles)
+        total_profiles += len(profiles)
         users.append(user)
 
-    print(f"👤 Seeded {len(users)} users with {len(users) * 2} profiles")
+    print(f"👤 Seeded {len(users)} users with {total_profiles} profiles")
 
     # --------------------
     # Listings
     # --------------------
-    today = date.today()
-
     NUM_LISTINGS = 20
     TIMES = [
         "6:00 PM",

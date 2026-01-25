@@ -91,11 +91,11 @@
           Posted by
           <a href="{{ url_for('profile_detail', profile_id=listing.profile.id) }}"
              style="color:#2563eb;text-decoration:none;font-weight:800;">
-            {{ listing.profile.display_name }}
+            {{ listing.profile.user.username }}
           </a>
         </p>
 
-        {% if current_user.is_authenticated and current_user.id != listing.profile.user_id %}
+        {% if not current_user.is_authenticated or current_user.id != listing.profile.user_id %}
           <div style="margin-top:12px;">
             {{ message_box(listing.profile.user_id) }}
           </div>
@@ -105,26 +105,8 @@
       {% endif %}
     </div>
 
-    {% if listing.profile and current_user.is_authenticated %}
-      {% if current_user.id != listing.profile.user_id %}
-        <div style="margin-top:14px;padding-top:14px;border-top:1px solid #e5e7eb;">
-          {% if listing.is_archived %}
-            {% if current_request %}
-              <span class="booking-chip">Booking {{ current_request.status }}</span>
-            {% else %}
-              <span class="booking-chip">Listing archived</span>
-            {% endif %}
-          {% else %}
-            {% if current_request %}
-              <span class="booking-chip">Request {{ current_request.status }}</span>
-            {% else %}
-              <form method="POST" action="{{ url_for('request_booking', listing_id=listing.id) }}">
-                <button type="submit" class="booking-btn">Request booking</button>
-              </form>
-            {% endif %}
-          {% endif %}
-        </div>
-      {% elif booking_requests %}
+    {% if listing.profile %}
+      {% if current_user.is_authenticated and current_user.id == listing.profile.user_id %}
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid #e5e7eb;">
           <h3 style="margin:0 0 10px 0;">Booking requests</h3>
           {% for req in booking_requests %}
@@ -139,6 +121,7 @@
               </div>
               {% if req.status == "pending" and not listing.is_archived %}
                 <form method="POST" action="{{ url_for('respond_booking', booking_id=req.id) }}" class="booking-actions">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button type="submit" name="action" value="accept" class="booking-btn">Accept</button>
                   <span class="accept-warning">Accepting archives the listing</span>
                   <button type="submit" name="action" value="decline" class="booking-btn secondary">Decline</button>
@@ -148,6 +131,52 @@
               {% endif %}
             </div>
           {% endfor %}
+        </div>
+      {% else %}
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid #e5e7eb;">
+          {% if listing.is_archived %}
+            {% if current_request %}
+              <span class="booking-chip">Booking {{ current_request.status }}</span>
+            {% else %}
+              <span class="booking-chip">Listing archived</span>
+            {% endif %}
+          {% else %}
+            {% if current_request %}
+              <span class="booking-chip">Request {{ current_request.status }}</span>
+            {% elif current_user.is_authenticated %}
+              <form method="POST" action="{{ url_for('request_booking', listing_id=listing.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="booking-btn">Request booking</button>
+              </form>
+            {% else %}
+              <button type="button" class="booking-btn"
+                onclick="document.getElementById('auth-request').style.display='block';">
+                Request booking
+              </button>
+              <div id="auth-request" style="display:none;margin-top:10px;">
+                <div style="padding:10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
+                  <div style="margin-bottom:8px;color:#111827;font-weight:800;">
+                    Create an account to request bookings.
+                  </div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <a href="{{ url_for('signup') }}"
+                       style="display:inline-block;padding:8px 12px;border-radius:10px;background:#2563eb;color:#fff;text-decoration:none;">
+                      Sign up
+                    </a>
+                    <a href="{{ url_for('login') }}"
+                       style="display:inline-block;padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;text-decoration:none;">
+                      Log in
+                    </a>
+                    <button type="button"
+                      onclick="document.getElementById('auth-request').style.display='none'"
+                      style="padding:8px 12px;border-radius:10px;">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            {% endif %}
+          {% endif %}
         </div>
       {% endif %}
     {% endif %}

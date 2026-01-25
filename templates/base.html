@@ -157,6 +157,13 @@
           opacity: 0.95;
           line-height: 1;
         }
+        .icon-avatar{
+          width: 28px;
+          height: 28px;
+          border-radius: 999px;
+          object-fit: cover;
+          border: 1px solid rgba(255,255,255,0.65);
+        }
 
         .primary-btn{
           display: inline-flex;
@@ -218,13 +225,13 @@
         <div class="nav-links">
           <a class="nav-link" href="{{ url_for('about') }}">About</a>
           <a class="nav-link" href="{{ url_for('profile_search') }}">Search Profiles</a>
-          <a class="nav-link" href="{{ url_for('my_listings') }}">
-            My Listings
-            {% if pending_booking_count %}
-              <span class="nav-badge">{{ pending_booking_count }}</span>
-            {% endif %}
-          </a>
           {% if current_user.is_authenticated %}
+            <a class="nav-link" href="{{ url_for('my_listings') }}">
+              My Listings
+              {% if pending_booking_count %}
+                <span class="nav-badge">{{ pending_booking_count }}</span>
+              {% endif %}
+            </a>
             <a class="nav-link" href="{{ url_for('my_bookings') }}">
               My Bookings
               {% if booking_updates_count %}
@@ -233,15 +240,17 @@
             </a>
           {% endif %}
 
-          <!-- Messages icon button (same logic + same route) -->
-          <a class="icon-btn"
-             href="{% if current_user.is_authenticated %}{{ url_for('inbox') }}{% else %}{{ url_for('go_signup_for_messages') }}{% endif %}"
-             title="Inbox">
-            <span class="material-symbols-outlined" aria-hidden="true">inbox</span>
-            {% if unread_messages_count %}
-              <span class="nav-badge">{{ unread_messages_count }}</span>
-            {% endif %}
-          </a>
+          {% if current_user.is_authenticated %}
+            <!-- Messages icon button (same logic + same route) -->
+            <a class="icon-btn"
+               href="{{ url_for('inbox') }}"
+               title="Inbox">
+              <span class="material-symbols-outlined" aria-hidden="true">inbox</span>
+              {% if unread_messages_count %}
+                <span class="nav-badge">{{ unread_messages_count }}</span>
+              {% endif %}
+            </a>
+          {% endif %}
         </div>
 
         <div class="nav-spacer"></div>
@@ -250,6 +259,13 @@
         <div class="nav-right">
           {% if current_user.is_authenticated %}
             <span class="user-info">Welcome, <b style="color:#fff;">{{ current_user.username }}</b></span>
+            <a class="icon-btn" href="{{ url_for('my_profile') }}" title="My profile">
+              {% if current_user_profile and current_user_profile.avatar_url %}
+                <img class="icon-avatar" src="{{ current_user_profile.avatar_url }}" alt="Profile">
+              {% else %}
+                <span class="material-symbols-outlined" aria-hidden="true">account_circle</span>
+              {% endif %}
+            </a>
             <a class="ghost-btn" href="{{ url_for('logout') }}">Logout</a>
           {% else %}
             <a class="ghost-btn" href="{{ url_for('login') }}">Login</a>

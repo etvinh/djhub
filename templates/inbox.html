@@ -41,7 +41,7 @@
     align-items:center;
     gap:8px;
     padding: 9px 12px;
-    border-radius: 999px;
+    border-radius: 15px;
     border: 1px solid var(--border);
     background: #fff;
     color: var(--text);
@@ -145,9 +145,44 @@
   .composer.open{ display:block; }
   .grid{
     display:grid;
-    grid-template-columns: 220px 1fr 120px;
+    grid-template-columns: 1fr 1fr 120px;
     gap: 10px;
     align-items:end;
+  }
+  .results{
+    grid-column: 1 / -1;
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px;
+    display:none;
+  }
+  .results.open{ display:block; }
+  .result-item{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .result-item:hover{ background:#fff; }
+  .result-avatar{
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+  }
+  .result-name{
+    font-weight: 900;
+    color: var(--text);
+    font-size: 13px;
+  }
+  .result-handle{
+    color: var(--muted);
+    font-weight: 800;
+    font-size: 12px;
   }
   .field label{
     display:block;
@@ -157,7 +192,7 @@
     margin-bottom: 6px;
   }
   .field input{
-    width: 100%;
+    width: 90%;
     height: 44px;
     padding: 0 12px;
     border-radius: 12px;
@@ -188,16 +223,19 @@
 
     <div id="composer" class="composer">
       <form method="post" action="{{ url_for('start_conversation') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="grid">
           <div class="field">
-            <label>Recipient (user id)</label>
-            <input name="recipient_id" placeholder="e.g. 12" inputmode="numeric">
+            <label>Recipient (@username)</label>
+            <input id="recipient_search" placeholder="@djname" autocomplete="off">
+            <input type="hidden" id="recipient_id" name="recipient_id">
           </div>
           <div class="field">
-            <label>Message (optional)</label>
-            <input name="body" placeholder="Write a message…">
+            <label>Message</label>
+            <input name="body" placeholder="Write a message…" required>
           </div>
-          <button class="pill primary" type="submit">Open chat</button>
+          <button class="pill primary" type="submit">Send message</button>
+          <div id="recipient_results" class="results" aria-live="polite"></div>
         </div>
       </form>
     </div>
@@ -240,6 +278,53 @@
     const el = document.getElementById("composer");
     el.classList.toggle("open");
   }
+
+  const searchInput = document.getElementById("recipient_search");
+  const resultsEl = document.getElementById("recipient_results");
+  const recipientId = document.getElementById("recipient_id");
+  let searchTimer;
+
+  function renderResults(items){
+    if (!items.length){
+      resultsEl.innerHTML = '<div style="padding:8px;color:#64748b;font-weight:800;">No matches.</div>';
+      resultsEl.classList.add("open");
+      return;
+    }
+    resultsEl.innerHTML = items.map(p => `
+      <div class="result-item" data-id="${p.id}" data-username="${p.username}">
+        <img class="result-avatar" src="${p.avatar_url}" alt="">
+        <div>
+          <div class="result-name">@${p.username}</div>
+          <div class="result-handle">Select to message</div>
+        </div>
+      </div>
+    `).join("");
+    resultsEl.classList.add("open");
+  }
+
+  resultsEl?.addEventListener("click", (e) => {
+    const item = e.target.closest(".result-item");
+    if (!item) return;
+    recipientId.value = item.dataset.id;
+    searchInput.value = `@${item.dataset.username}`;
+    resultsEl.classList.remove("open");
+  });
+
+  searchInput?.addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    recipientId.value = "";
+    const q = searchInput.value.trim().replace(/^@+/, "");
+    if (!q){
+      resultsEl.classList.remove("open");
+      resultsEl.innerHTML = "";
+      return;
+    }
+    searchTimer = setTimeout(async () => {
+      const res = await fetch(`/api/profiles/search?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      renderResults(data.profiles || []);
+    }, 200);
+  });
 </script>
 
 {% endblock %}

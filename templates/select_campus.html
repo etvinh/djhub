@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "auth_base.html" %}
 
 {% block title %}Select Campus{% endblock %}
 
@@ -7,6 +7,7 @@
     <h2 style="text-align: center;">Welcome! Please Select Your Campus</h2>
     
     <form method="POST" action="{{ url_for('select_campus') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group" style="margin-bottom: 20px;">
             <label for="campus_select" style="display: block; margin-bottom: 5px;">Campus:</label>
             <select id="campus_select" name="campus_slug" required style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">

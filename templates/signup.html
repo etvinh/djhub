@@ -7,12 +7,14 @@
 
 {% block auth_form %}
 <form method="POST" action="{{ url_for('signup') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="form-group">
-    <label for="username">Username</label>
+    <label for="username">@username</label>
     <input
       type="text"
       id="username"
       name="username"
+      placeholder="@djname"
       value="{{ request.form.username or '' }}"
       required
       autofocus
@@ -27,6 +29,9 @@
       name="password"
       required
     >
+    <div style="margin-top:6px;color:rgba(226,232,240,0.75);font-size:12px;font-weight:700;">
+      Password must be at least 8 characters and include a letter and a number.
+    </div>
   </div>
 
   <div class="form-group">

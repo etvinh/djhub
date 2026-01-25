@@ -21,7 +21,8 @@
 
   .search-shell{
     max-width: 860px;
-    margin: 0 auto;
+    margin: 24px auto 0;
+    padding: 0 16px 80px;
   }
 
   .search-hero{
@@ -128,7 +129,7 @@
   .avatar{
     width: 52px;
     height: 52px;
-    border-radius: 14px;
+    border-radius: 999px;
     object-fit: cover;
     border: 1px solid rgba(255,255,255,0.12);
     background: rgba(255,255,255,0.06);
@@ -184,7 +185,7 @@
 
     <div class="search-hero">
       <h1>Find a DJ 🔍</h1>
-      <p>Search by username, display name, city, or genres. Results update as you type.</p>
+      <p>Search by username, city, or genres. Results update as you type.</p>
 
       <div class="searchbar">
         <input id="q" type="search" placeholder="Type a username…" autofocus autocomplete="off">
@@ -253,7 +254,7 @@
             <img class="avatar" src="${esc(p.avatar_url)}" alt="">
             <div style="min-width:0">
               <div class="name-row">
-                <div class="display">${esc(p.display_name || p.username)}</div>
+                <div class="display">${esc(p.username || "")}</div>
                 <div class="handle">@${esc(p.username || "")}</div>
               </div>
               <div class="meta">${esc(p.city || "")}${p.genres ? " • " + esc(p.genres) : ""}</div>
@@ -270,4 +271,3 @@
   });
 </script>
 {% endblock %}
-
