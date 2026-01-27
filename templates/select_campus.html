@@ -3,25 +3,94 @@
 {% block title %}Select Campus{% endblock %}
 
 {% block content %}
-<div class="selection-container" style="max-width: 400px; margin: 50px auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-    <h2 style="text-align: center;">Welcome! Please Select Your Campus</h2>
-    
-    <form method="POST" action="{{ url_for('select_campus') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="form-group" style="margin-bottom: 20px;">
-            <label for="campus_select" style="display: block; margin-bottom: 5px;">Campus:</label>
-            <select id="campus_select" name="campus_slug" required style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
-                {% for campus in campuses %}
-                    <option value="{{ campus.slug }}">{{ campus.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        
-        <button type="submit" class="btn-primary" style="width: 100%; padding: 10px; background-color: #0779e4; color: white; border: none; border-radius: 4px; cursor: pointer;">Continue</button>
-    </form>
+<style>
+  .campus-page{
+    min-height: calc(100vh - 60px);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 40px 16px;
+  }
+  .selection-container{
+    width: 100%;
+    max-width: 420px;
+    padding: 24px;
+    border-radius: 18px;
+    background: rgba(15,23,42,0.78);
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 30px 80px rgba(2,6,23,0.45);
+    color: #fff;
+  }
+  .selection-container h2{
+    margin: 0 0 10px;
+    text-align:center;
+    font-size: 24px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+  }
+  .form-group{
+    margin-bottom: 16px;
+  }
+  .form-group label{
+    display:block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(226,232,240,0.75);
+  }
+  .form-group select{
+    width: 100%;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+    padding: 0 12px;
+    font-size: 14px;
+    font-weight: 700;
+    outline: none;
+  }
+  .btn-primary{
+    width: 100%;
+    height: 46px;
+    border-radius: 12px;
+    border: none;
+    background: linear-gradient(135deg, #4f7cff, #2563eb);
+    color: #fff;
+    font-weight: 900;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .note{
+    margin-top: 18px;
+    text-align: center;
+    color: rgba(226,232,240,0.7);
+    font-weight: 700;
+    font-size: 12px;
+  }
+</style>
 
-    <p style="margin-top: 20px; text-align: center; color: #666;">
-        Note: Currently, only UC Santa Cruz is available.
-    </p>
+<div class="campus-page">
+  <div class="selection-container">
+      <h2>Welcome! Please Select Your Campus</h2>
+
+      <form method="POST" action="{{ url_for('select_campus') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="form-group">
+              <label for="campus_select">Campus</label>
+              <select id="campus_select" name="campus_slug" required>
+                  {% for campus in campuses %}
+                      <option value="{{ campus.slug }}">{{ campus.name }}</option>
+                  {% endfor %}
+              </select>
+          </div>
+
+          <button type="submit" class="btn-primary">Continue</button>
+      </form>
+
+      <p class="note">Note: Currently, only UC Santa Cruz is available.</p>
+  </div>
 </div>
 {% endblock %}

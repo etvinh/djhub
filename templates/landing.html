@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DJHub · Welcome</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg1: #0b1220;
+      --bg2: #0f1b2d;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #22c55e;
+    }
+    *{ box-sizing: border-box; }
+    body{
+      margin: 0;
+      font-family: "Space Grotesk", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg1);
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+    body::before{
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(120deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.12) 36%, rgba(255,255,255,0.0) 66%),
+        linear-gradient(210deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.0) 48%),
+        radial-gradient(1200px 620px at 18% -12%, rgba(79,124,255,0.38), transparent 66%),
+        radial-gradient(900px 520px at 88% 6%, rgba(56,189,248,0.34), transparent 62%);
+      mix-blend-mode: screen;
+      z-index: -1;
+    }
+    .video-stage{
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+    }
+    .video-bg{
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      opacity: 0.12;
+      filter: blur(0.4px) saturate(1.1);
+    }
+    .video-overlay{
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(11,18,32,0.62), rgba(11,18,32,0.42));
+      z-index: -1;
+    }
+    .hero{
+      min-height: 90vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 80px 20px 40px;
+      text-align: center;
+    }
+    .hero-inner{
+      max-width: 760px;
+    }
+    .eyebrow{
+      font-size: 12px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 800;
+    }
+    h1{
+      margin: 12px 0 12px;
+      font-size: 46px;
+      line-height: 1.05;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+    }
+    .sub{
+      margin: 0 auto 24px;
+      color: var(--muted);
+      font-weight: 700;
+      max-width: 560px;
+      font-size: 15px;
+    }
+    .scroll-hint{
+      display:inline-flex;
+      align-items:center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+      font-weight: 800;
+      text-decoration: none;
+      animation: float 1.6s ease-in-out infinite;
+    }
+    @keyframes float{
+      0%,100%{ transform: translateY(0); }
+      50%{ transform: translateY(-6px); }
+    }
+    .disc-section{
+      min-height: 100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 40px 16px 80px;
+    }
+    .disc-wrap{
+      position: relative;
+      width: min(70vw, 520px);
+      aspect-ratio: 1 / 1;
+    }
+    .disc{
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 999px;
+      -webkit-mask-image: radial-gradient(circle at center, #000 99%, transparent 100%);
+      mask-image: radial-gradient(circle at center, #000 99%, transparent 100%);
+      transform-origin: center;
+      transition: transform 0.7s ease;
+    }
+    .disc-wrap:hover .disc{
+      transform: rotate(180deg);
+    }
+    .disc.spin{
+      animation: spin 0.9s ease forwards;
+    }
+    @keyframes spin{
+      to{ transform: rotate(720deg) scale(1.02); }
+    }
+    .disc-cta{
+      position: absolute;
+      inset: 0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      text-decoration: none;
+      color: #0b0f1a;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 14px;
+    }
+    .disc-cta span{
+      background: rgba(255,255,255,0.92);
+      padding: 10px 14px;
+      border-radius: 999px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+    @media (max-width: 720px){
+      h1{ font-size: 36px; }
+      .disc-wrap{ width: min(82vw, 420px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="video-stage" aria-hidden="true">
+    <video class="video-bg" autoplay muted loop playsinline>
+      <source src="{{ url_for('static', filename='img/DJHUB background.mp4') }}" type="video/mp4">
+    </video>
+    <div class="video-overlay"></div>
+  </div>
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="eyebrow">DJHub</div>
+      <h1>Find DJs. Book faster. Throw better events.</h1>
+      <p class="sub">Start by choosing your campus — scroll down and tap the disc to enter.</p>
+      <a class="scroll-hint" href="#disc">Scroll to the disc ↓</a>
+    </div>
+  </section>
+
+  <section class="disc-section" id="disc">
+    <div class="disc-wrap">
+      <img class="disc" id="discImg" src="{{ url_for('static', filename='img/homedisc.png') }}" alt="DJHub disc" />
+      <a class="disc-cta" id="discCta" href="{{ url_for('select_campus') }}">
+        <span>Go to your college</span>
+      </a>
+    </div>
+  </section>
+
+  <script>
+    const disc = document.getElementById('discImg');
+    const cta = document.getElementById('discCta');
+    if (disc && cta) {
+      cta.addEventListener('click', (e) => {
+        e.preventDefault();
+        disc.classList.add('spin');
+        setTimeout(() => {
+          window.location.href = cta.href;
+        }, 650);
+      });
+    }
+  </script>
+</body>
+</html>

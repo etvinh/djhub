@@ -122,17 +122,11 @@
     white-space: nowrap;
   }
   .badge{
-    min-width: 18px;
-    height: 18px;
-    padding: 0 6px;
+    width: 10px;
+    height: 10px;
     border-radius: 999px;
-    background: var(--blue);
-    color: #fff;
-    font-size: 12px;
-    font-weight: 900;
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
+    background: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239,68,68,0.18);
   }
 
   /* New message modal-ish box */
@@ -263,7 +257,7 @@
                 {{ it.last_at.strftime("%b %d, %I:%M %p") if it.last_at else "" }}
               </div>
               {% if it.unread_count and it.unread_count > 0 %}
-                <div class="badge">{{ it.unread_count }}</div>
+                <div class="badge"></div>
               {% endif %}
             </div>
           </a>

@@ -3,17 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <title>{% block title %}DJHub{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400" />
     <style>
         :root{
-          --nav-bg: rgba(10, 10, 12, 0.72);
+          --font: "Space Grotesk", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+          --bg: #0b1220;
+          --bg-2: #0f1b2d;
+          --text: #e2e8f0;
+          --muted: rgba(226,232,240,0.75);
+          --glass: rgba(15,23,42,0.62);
+          --glass-border: rgba(255,255,255,0.12);
+          --nav-bg: rgba(8, 12, 24, 0.72);
           --nav-border: rgba(255,255,255,0.10);
-          --nav-text: rgba(255,255,255,0.90);
-          --nav-muted: rgba(226,232,240,0.75);
+          --nav-text: rgba(255,255,255,0.92);
+          --nav-muted: rgba(226,232,240,0.78);
           --nav-pill: rgba(255,255,255,0.10);
           --nav-pill-border: rgba(255,255,255,0.14);
-          --blue: #2f6bff;
+          --blue: #4f7cff;
         }
 
         /* Flash messages (keep your existing) */
@@ -25,8 +35,28 @@
         /* ===== NAVBAR: dark/glassy like the reference ===== */
         body{
           margin: 0;
-          font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-          background: #fff;
+          font-family: var(--font);
+          color: var(--text);
+          background: var(--bg);
+          position: relative;
+          overflow-x: hidden;
+        }
+        body::before{
+          content: "";
+          position: fixed;
+          inset: 0;
+          pointer-events: none;
+          background:
+            linear-gradient(120deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.12) 36%, rgba(255,255,255,0.0) 66%),
+            linear-gradient(210deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.0) 48%),
+            radial-gradient(1200px 620px at 18% -12%, rgba(79,124,255,0.38), transparent 66%),
+            radial-gradient(900px 520px at 88% 6%, rgba(56,189,248,0.34), transparent 62%);
+          mix-blend-mode: screen;
+          z-index: 0;
+        }
+        main, .navbar{
+          position: relative;
+          z-index: 1;
         }
 
         .navbar{
@@ -37,7 +67,7 @@
           align-items: center;
           justify-content: center;
           padding: 12px 16px;
-          background: linear-gradient(to bottom, rgba(0,0,0,0.70), rgba(0,0,0,0.55));
+          background: linear-gradient(to bottom, rgba(8,12,24,0.78), rgba(8,12,24,0.55));
           border-bottom: 1px solid var(--nav-border);
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
@@ -69,7 +99,7 @@
           height: 28px;
           border-radius: 10px;
           background: rgba(255,255,255,0.12);
-          border: 1px solid rgba(255,255,255,0.16);
+          border: 1px solid rgba(255,255,255,0.18);
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -143,7 +173,7 @@
           width: 40px;
           height: 40px;
           border-radius: 999px;
-          border: 1px solid var(--nav-pill-border);
+          border: 1px solid var(--glass-border);
           background: rgba(255,255,255,0.10);
           text-decoration: none;
           transition: filter 120ms ease, transform 120ms ease;
@@ -200,7 +230,7 @@
         main{
           max-width: 1100px;
           margin: 0 auto;
-          padding: 0 16px;
+          padding: 0 16px 60px;
         }
 
         /* Mobile */
@@ -229,13 +259,13 @@
             <a class="nav-link" href="{{ url_for('my_listings') }}">
               My Listings
               {% if pending_booking_count %}
-                <span class="nav-badge">{{ pending_booking_count }}</span>
+                <span class="nav-badge"></span>
               {% endif %}
             </a>
             <a class="nav-link" href="{{ url_for('my_bookings') }}">
               My Bookings
               {% if booking_updates_count %}
-                <span class="nav-badge">{{ booking_updates_count }}</span>
+                <span class="nav-badge"></span>
               {% endif %}
             </a>
           {% endif %}
@@ -247,7 +277,7 @@
                title="Inbox">
               <span class="material-symbols-outlined" aria-hidden="true">inbox</span>
               {% if unread_messages_count %}
-                <span class="nav-badge">{{ unread_messages_count }}</span>
+                <span class="nav-badge"></span>
               {% endif %}
             </a>
           {% endif %}

@@ -17,9 +17,27 @@
   /* ===== Page-scoped styling ===== */
   .djhub-feed * { box-sizing: border-box; }
   .djhub-feed{
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    font-family: var(--font);
     color: #0f172a;
     margin: 0;
+  }
+  body{
+    background: url("{{ url_for('static', filename='img/feedbackground.png') }}") center / cover fixed no-repeat;
+    position: relative;
+  }
+  body::before{
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(11,18,32,0.82);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .djhub-feed{
+    position: relative;
+    z-index: 1;
   }
 
   /* kill default list/bullets/blue links regardless of global CSS */
@@ -51,6 +69,7 @@
     background-size: cover;
     background-position: center;
     box-shadow: var(--shadow);
+    margin-top: 80px;
   }
 
   .hero-inner{
@@ -225,27 +244,70 @@
   /* ===== Cards grid ===== */
   .listings{
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
   }
 
   .listing{
-    /* keep your class, but restyle it into a card */
+    width: 100%;
   }
 
   .card{
+    position: relative;
     display: block;
-    border-radius: 14px;
-    background: #111827;
-    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.12);
     box-shadow: var(--shadow2);
-    padding: 14px;
-    transition: transform 120ms ease, box-shadow 120ms ease;
-    min-height: 250px;
+    overflow: hidden;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    background: radial-gradient(120% 80% at 20% 0%, rgba(79,124,255,0.3), rgba(15,23,42,0.9));
+    background-image: var(--flyer, none);
+    background-size: cover;
+    background-position: center;
+    transition: transform 160ms ease, box-shadow 160ms ease;
   }
   .card:hover{
     transform: translateY(-2px);
     box-shadow: 0 20px 55px rgba(2,6,23,0.24);
+  }
+
+  .card.no-flyer{
+    background-image: linear-gradient(180deg, rgba(79,124,255,0.22), rgba(15,23,42,0.92));
+  }
+  .flyer-overlay{
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg, rgba(2,6,23,0.12) 0%, rgba(2,6,23,0.55) 62%, rgba(2,6,23,0.88) 100%);
+  }
+  .flyer-content{
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 16px;
+    gap: 6px;
+  }
+  .flyer-top{
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    right: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .flyer-price{
+    font-size: 14px;
+    font-weight: 900;
+    color: #fff;
+    background: rgba(15,23,42,0.6);
+    border: 1px solid rgba(255,255,255,0.12);
+    padding: 6px 10px;
+    border-radius: 999px;
   }
 
   .badge{
@@ -261,40 +323,27 @@
     text-transform: uppercase;
   }
 
-  .price{
-    margin-top: 10px;
-    font-size: 22px;
-    font-weight: 900;
-    color: #fff;
-    letter-spacing: -0.02em;
-  }
-
   .title{
-    margin-top: 8px;
+    margin-top: 0;
     font-weight: 900;
     color: rgba(255,255,255,0.93);
-    font-size: 13px;
+    font-size: 16px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   .meta{
-    margin-top: 6px;
+    margin-top: 0;
     font-size: 12px;
     color: rgba(226,232,240,0.85);
     font-weight: 750;
   }
 
   .desc{
-    margin-top: 10px;
+    margin-top: 2px;
     font-size: 12px;
     color: rgba(226,232,240,0.72);
-    line-height: 1.35;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
   }
 
   /* ===== Load more ===== */
@@ -304,16 +353,46 @@
     margin-top: 18px;
   }
   #loadMore{
-    height: 44px;
-    padding: 0 16px;
+    width: 140px;
+    aspect-ratio: 1 / 1;
     border: 0;
-    border-radius: 12px;
-    background: var(--blue);
+    border-radius: 999px;
+    background: transparent;
     color: #fff;
     font-weight: 900;
-    cursor:pointer;
+    cursor: pointer;
+    position: relative;
+    display: grid;
+    place-items: center;
   }
-  #loadMore:disabled{ opacity: 0.65; cursor:not-allowed; }
+  #loadMore::before{
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: url("{{ url_for('static', filename='img/homedisc.png') }}") center / cover no-repeat;
+    -webkit-mask-image: radial-gradient(circle at center, #000 99%, transparent 100%);
+    mask-image: radial-gradient(circle at center, #000 99%, transparent 100%);
+    transition: transform 400ms ease;
+  }
+  #loadMore span{
+    position: relative;
+    z-index: 1;
+    background: rgba(15,23,42,0.65);
+    border: 1px solid rgba(255,255,255,0.12);
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  #loadMore:hover::before{
+    transform: rotate(180deg);
+  }
+  #loadMore:disabled{
+    opacity: 0.65;
+    cursor:not-allowed;
+  }
 
   #loading{
     text-align:center;
@@ -404,21 +483,20 @@
     <ul id="listing-feed" class="listings">
       {% for l in listings %}
         <li class="listing">
-          <a class="card" href="{{ url_for('listing_detail', listing_id=l.id) }}">
-            <span class="badge">{{ l.genres or "Gig" }}</span>
-
-            <div class="price">
-              {% if l.budget %}${{ l.budget }}{% else %}Open Budget{% endif %}
+          <a class="card {% if not l.cover_image_url %}no-flyer{% endif %}"
+             href="{{ url_for('listing_detail', listing_id=l.id) }}"
+             {% if l.cover_image_url %}style="--flyer:url('{{ l.cover_image_url }}');"{% endif %}>
+            <div class="flyer-overlay"></div>
+            <div class="flyer-top">
+              <span class="badge">{{ l.genres or "Gig" }}</span>
+              <span class="flyer-price">{% if l.budget %}${{ l.budget }}{% else %}Open Budget{% endif %}</span>
             </div>
-
-            <div class="title">{{ l.title }}</div>
-
-            <div class="meta">
-              {{ l.city or "Location TBA" }}{% if l.date %} • {{ l.date }}{% endif %}{% if l.time %} • {{ l.time }}{% endif %}
-            </div>
-
-            <div class="desc">
-              {% if l.description %}{{ l.description }}{% else %}Tap to view details.{% endif %}
+            <div class="flyer-content">
+              <div class="title">{{ l.title }}</div>
+              <div class="meta">
+                {{ l.city or "Location TBA" }}{% if l.date %} • {{ l.date }}{% endif %}{% if l.time %} • {{ l.time }}{% endif %}
+              </div>
+              <div class="desc">Tap to view details.</div>
             </div>
           </a>
         </li>
@@ -429,7 +507,7 @@
 
     {% if has_next %}
       <div class="load-wrap">
-        <button id="loadMore" data-next="{{ next_page }}">Load more</button>
+        <button id="loadMore" data-next="{{ next_page }}"><span>Load more</span></button>
       </div>
     {% endif %}
     <div id="loading" hidden>Loading…</div>
@@ -469,20 +547,21 @@ const res = await fetch(`/api/listings?${params.toString()}`);
       listings.forEach(l => {
         const li = document.createElement('li');
         li.className = 'listing';
+        const flyerStyle = l.cover_image_url ? `style="--flyer:url('${esc(l.cover_image_url)}');"` : "";
+        const flyerClass = l.cover_image_url ? "" : "no-flyer";
         li.innerHTML = `
-          <a class="card" href="/l/${esc(l.id)}">
-            <span class="badge">${esc(l.genres || "Gig")}</span>
-
-            <div class="price">${l.budget ? '$' + esc(l.budget) : 'Open Budget'}</div>
-
-            <div class="title">${esc(l.title || "")}</div>
-
-            <div class="meta">
-              ${esc(l.city || "Location TBA")}${l.date ? ' • ' + esc(l.date) : ''}${l.time ? ' • ' + esc(l.time) : ''}
+          <a class="card ${flyerClass}" href="/l/${esc(l.id)}" ${flyerStyle}>
+            <div class="flyer-overlay"></div>
+            <div class="flyer-top">
+              <span class="badge">${esc(l.genres || "Gig")}</span>
+              <span class="flyer-price">${l.budget ? '$' + esc(l.budget) : 'Open Budget'}</span>
             </div>
-
-            <div class="desc">
-              ${l.description ? esc(l.description) : 'Tap to view details.'}
+            <div class="flyer-content">
+              <div class="title">${esc(l.title || "")}</div>
+              <div class="meta">
+                ${esc(l.city || "Location TBA")}${l.date ? ' • ' + esc(l.date) : ''}${l.time ? ' • ' + esc(l.time) : ''}
+              </div>
+              <div class="desc">Tap to view details.</div>
             </div>
           </a>
         `;
@@ -508,3 +587,28 @@ const res = await fetch(`/api/listings?${params.toString()}`);
 </script>
 
 {% endblock %}
+  .card-img{
+    width: 100%;
+    height: 160px;
+    border-radius: 10px;
+    object-fit: cover;
+    margin-bottom: 10px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .card-body{
+    flex: 1;
+    min-width: 0;
+  }
+  .card-img{
+    width: 223px;
+    height: 223px;
+    max-width: 223px;
+    max-height: 223px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 1px solid rgba(255,255,255,0.08);
+    margin-left: 12px;
+    padding: 4px;
+    align-self: center;
+    flex: 0 0 223px;
+  }

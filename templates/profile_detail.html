@@ -22,7 +22,7 @@
     max-width: 980px;
     margin: 22px auto;
     padding: 0 16px 80px;
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    font-family: var(--font);
     color: var(--text);
   }
 
@@ -56,6 +56,27 @@
     gap: 16px;
     align-items:center;
     padding: 18px;
+  }
+  .socials{
+    display:flex;
+    gap: 8px;
+    align-items:center;
+    margin-top: 10px;
+  }
+  .social-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.08);
+    text-decoration: none;
+  }
+  .social-btn img{
+    width: 18px;
+    height: 18px;
   }
 
   .avatar{
@@ -148,6 +169,129 @@
     color: #0f172a;
   }
 
+  .rating-summary{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .stars{
+    --percent: 0%;
+    position: relative;
+    display: inline-block;
+    font-size: 20px;
+    line-height: 1;
+    letter-spacing: 2px;
+  }
+  .stars::before{
+    content: "★★★★★";
+    color: #e5e7eb;
+  }
+  .stars::after{
+    content: "★★★★★";
+    color: #f59e0b;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--percent);
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .rating-text{
+    font-weight: 900;
+    color: #0f172a;
+  }
+  .review-form{
+    margin-top: 10px;
+    display:flex;
+    align-items:center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .star-input{
+    display:inline-flex;
+    flex-direction: row-reverse;
+    gap: 6px;
+  }
+  .star-input input{
+    display:none;
+  }
+  .star-input label{
+    cursor: pointer;
+    font-size: 22px;
+    color: #cbd5f5;
+    transition: color 0.15s ease;
+  }
+  .star-input input:checked ~ label,
+  .star-input label:hover,
+  .star-input label:hover ~ label{
+    color: #f59e0b;
+  }
+  .review-btn{
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 0;
+    background: #0f172a;
+    color: #fff;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .tracks{
+    display:grid;
+    gap: 12px;
+  }
+  .track{
+    display:flex;
+    align-items:center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 14px;
+    background: #0b1220;
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #fff;
+  }
+  .track-title{
+    font-weight: 900;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+  }
+  .track-btn{
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.16);
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    font-weight: 900;
+    cursor: pointer;
+  }
+  .track-progress{
+    position: relative;
+    flex: 1;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.12);
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .track-progress > span{
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #4f7cff, #22d3ee);
+  }
+  .track-time{
+    font-size: 11px;
+    font-weight: 800;
+    color: rgba(226,232,240,0.7);
+    min-width: 64px;
+    text-align: right;
+  }
+
   .bio{
     color: #111827;
     white-space: pre-wrap;
@@ -181,6 +325,21 @@
           {% if profile.city %}<span>• {{ profile.city }}</span>{% endif %}
         </div>
 
+        {% if instagram_url or spotify_url %}
+          <div class="socials">
+            {% if instagram_url %}
+              <a class="social-btn" href="{{ instagram_url }}" target="_blank" rel="noopener noreferrer" title="Instagram">
+                <img src="{{ url_for('static', filename='instagram.svg') }}" alt="Instagram">
+              </a>
+            {% endif %}
+            {% if spotify_url %}
+              <a class="social-btn" href="{{ spotify_url }}" target="_blank" rel="noopener noreferrer" title="Spotify">
+                <img src="{{ url_for('static', filename='spotify.svg') }}" alt="Spotify">
+              </a>
+            {% endif %}
+          </div>
+        {% endif %}
+
         <div class="pill-row">
           {% if profile.genres %}
             <span class="pill blue">{{ profile.genres }}</span>
@@ -207,6 +366,111 @@
       <div class="bio">{{ profile.bio }}</div>
     </div>
   {% endif %}
+
+  {% if tracks %}
+    <div class="card">
+      <h2>Top tracks</h2>
+      <div class="tracks">
+        {% for t in tracks %}
+          <div class="track" data-audio="{{ t.audio_url }}">
+            <button type="button" class="track-btn" aria-label="Play">▶</button>
+            <div style="flex:1;min-width:0;">
+              <div class="track-title">{{ t.title }}</div>
+              <div class="track-progress"><span></span></div>
+            </div>
+            <div class="track-time">0:00</div>
+            <audio preload="metadata" src="{{ t.audio_url }}"></audio>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="card" id="reviews">
+    <h2>Reviews</h2>
+    <div class="rating-summary">
+      <div class="stars" style="--percent: {{ (avg_rating * 20) | round(0) }}%;"></div>
+      <div class="rating-text">
+        {% if review_count %}
+          {{ avg_rating | round(1) }} / 5 • {{ review_count }} review{% if review_count != 1 %}s{% endif %}
+        {% else %}
+          No reviews yet
+        {% endif %}
+      </div>
+    </div>
+
+    {% if can_review %}
+      <form class="review-form" method="POST" action="{{ url_for('profile_review', profile_id=profile.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="star-input" aria-label="Rate this DJ">
+          {% for i in range(5, 0, -1) %}
+            <input type="radio" id="star-{{ i }}" name="rating" value="{{ i }}"
+              {% if existing_review and existing_review.rating == i %}checked{% endif %}>
+            <label for="star-{{ i }}" title="{{ i }} stars">★</label>
+          {% endfor %}
+        </div>
+        <button type="submit" class="review-btn">
+          {% if existing_review %}Update rating{% else %}Submit rating{% endif %}
+        </button>
+      </form>
+    {% endif %}
+  </div>
 </div>
+
+<script>
+  const tracks = document.querySelectorAll('.track');
+  let activeAudio = null;
+  let activeButton = null;
+
+  function formatTime(seconds){
+    if (!Number.isFinite(seconds)) return "0:00";
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  }
+
+  tracks.forEach(track => {
+    const audio = track.querySelector('audio');
+    const btn = track.querySelector('.track-btn');
+    const bar = track.querySelector('.track-progress');
+    const fill = track.querySelector('.track-progress span');
+    const time = track.querySelector('.track-time');
+
+    btn.addEventListener('click', () => {
+      if (activeAudio && activeAudio !== audio) {
+        activeAudio.pause();
+        if (activeButton) activeButton.textContent = "▶";
+      }
+      if (audio.paused) {
+        audio.play();
+        btn.textContent = "⏸";
+        activeAudio = audio;
+        activeButton = btn;
+      } else {
+        audio.pause();
+        btn.textContent = "▶";
+      }
+    });
+
+    audio.addEventListener('timeupdate', () => {
+      const pct = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
+      fill.style.width = `${pct}%`;
+      time.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
+    });
+
+    audio.addEventListener('ended', () => {
+      btn.textContent = "▶";
+      fill.style.width = "0%";
+    });
+
+    bar.addEventListener('click', (e) => {
+      const rect = bar.getBoundingClientRect();
+      const pct = (e.clientX - rect.left) / rect.width;
+      if (audio.duration) {
+        audio.currentTime = audio.duration * pct;
+      }
+    });
+  });
+</script>
 
 {% endblock %}

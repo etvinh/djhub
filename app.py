@@ -35,8 +35,8 @@ from models import Listing
 from models import Profile
 from models import Campus
 from models import Users
-from models import Genre, Location, BookingRequest, ListingNotification
-from models import Conversation, Message
+from models import Genre, Location, BookingRequest, ListingNotification, Review, ProfileTrack
+from models import Conversation, Message, ListingPhoto
 from extensions import db
  
 
@@ -46,7 +46,7 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or os.urandom(32)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///djhub.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["UPLOAD_FOLDER"] = os.path.join("static", "uploads")
-app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production"
@@ -55,8 +55,15 @@ db.init_app(app)
 csrf = CSRFProtect(app)
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{3,20}$")
+INSTAGRAM_USERNAME_RE = re.compile(r"^[A-Za-z0-9._]{1,30}$")
+SPOTIFY_ID_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 MAX_MESSAGE_LENGTH = 1000
 rate_limit_store = defaultdict(deque)
+
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    flash("File too large. Max upload size is 10MB.", "danger")
+    return redirect(request.referrer or url_for("my_profile"))
 
 def is_rate_limited(key: str, limit: int, window_seconds: int) -> bool:
     now = time()
@@ -74,6 +81,79 @@ def is_safe_redirect(target: str) -> bool:
     ref_url = urlparse(request.host_url)
     test_url = urlparse(urljoin(request.host_url, target))
     return test_url.scheme in ("http", "https") and ref_url.netloc == test_url.netloc
+
+def normalize_instagram_url(raw_value: str) -> str | None:
+    if not raw_value:
+        return None
+    value = raw_value.strip()
+    if not value:
+        return None
+
+    if value.startswith("@"):
+        value = value[1:]
+
+    if "://" not in value:
+        if value.startswith("instagram.com") or value.startswith("www.instagram.com") or value.startswith("m.instagram.com"):
+            value = f"https://{value}"
+        elif "/" not in value:
+            value = f"https://www.instagram.com/{value}"
+
+    parsed = urlparse(value)
+    if parsed.scheme not in ("http", "https"):
+        return None
+
+    host = parsed.netloc.lower()
+    if host not in {"instagram.com", "www.instagram.com", "m.instagram.com"}:
+        return None
+
+    path = parsed.path.strip("/")
+    if not path:
+        return None
+
+    segments = [seg for seg in path.split("/") if seg]
+    if len(segments) != 1:
+        return None
+
+    username = segments[0]
+    if not INSTAGRAM_USERNAME_RE.match(username):
+        return None
+
+    return f"https://www.instagram.com/{username}"
+
+def normalize_spotify_url(raw_value: str) -> str | None:
+    if not raw_value:
+        return None
+    value = raw_value.strip()
+    if not value:
+        return None
+
+    if "://" not in value:
+        if value.startswith("open.spotify.com") or value.startswith("www.spotify.com") or value.startswith("spotify.com"):
+            value = f"https://{value}"
+
+    parsed = urlparse(value)
+    if parsed.scheme not in ("http", "https"):
+        return None
+
+    host = parsed.netloc.lower()
+    if host not in {"open.spotify.com", "spotify.com", "www.spotify.com"}:
+        return None
+
+    path = parsed.path.strip("/")
+    if not path:
+        return None
+
+    segments = [seg for seg in path.split("/") if seg]
+    if len(segments) != 2:
+        return None
+
+    kind, identifier = segments
+    if kind not in {"artist", "user", "playlist"}:
+        return None
+    if not SPOTIFY_ID_RE.match(identifier):
+        return None
+
+    return f"https://open.spotify.com/{kind}/{identifier}"
 
 
 
@@ -107,6 +187,7 @@ def listing_detail(listing_id):
         db.session.commit()
     booking_requests = []
     current_request = None
+    requester_profiles = {}
     if current_user.is_authenticated and listing.profile:
         if current_user.id == listing.profile.user_id:
             request_query = BookingRequest.query.filter_by(listing_id=listing.id)
@@ -115,6 +196,10 @@ def listing_detail(listing_id):
             booking_requests = (request_query
                                 .order_by(BookingRequest.created_at.desc())
                                 .all())
+            if booking_requests:
+                requester_ids = [req.requester_id for req in booking_requests]
+                profiles = Profile.query.filter(Profile.user_id.in_(requester_ids)).all()
+                requester_profiles = {p.user_id: p for p in profiles}
         else:
             if listing.is_archived:
                 current_request = accepted_request
@@ -129,6 +214,7 @@ def listing_detail(listing_id):
         booking_requests=booking_requests,
         current_request=current_request,
         accepted_request=accepted_request,
+        requester_profiles=requester_profiles,
     )
 
 def listings_pagination_from_request(per_page=10): #pagination helper
@@ -180,6 +266,7 @@ def api_listings():
                 "budget": l.budget,
                 "genres": l.genres,
                 "description": l.description,
+                "cover_image_url": l.cover_image_url,
             }
             for l in pagination.items
         ],
@@ -201,12 +288,19 @@ def listings_feed(): #display listing feed
         genres=genres,
         locations=locations,
     )
-# --- NEW: Campus Selection Route (Root) ---
-@app.route("/", methods=["GET", "POST"], endpoint="select_campus")
-def select_campus():
-    # If the campus is already in the session, skip this screen and go to login/gateway
+# --- Landing Page (before campus selection) ---
+@app.get("/", endpoint="landing")
+def landing():
     if session.get('campus_slug'):
-        return redirect(url_for("login")) 
+        return redirect(url_for("login"))
+    return render_template("landing.html")
+
+# --- Campus Selection Route ---
+@app.route("/select-campus", methods=["GET", "POST"], endpoint="select_campus")
+def select_campus():
+    # If the campus is already in the session, skip this screen and go to listings
+    if session.get('campus_slug'):
+        return redirect(url_for("listings_feed")) 
 
     campuses = Campus.query.filter_by(is_active=True).all()
     
@@ -217,7 +311,7 @@ def select_campus():
         if campus:
             session['campus_slug'] = campus.slug
             flash(f"Campus set to {campus.name}.", "success")
-            return redirect(url_for("login")) # Redirects to the combined gateway
+            return redirect(url_for("listings_feed")) # Send users to explore first
         else:
             flash("Invalid campus selection.", "danger")
             return redirect(url_for("select_campus"))
@@ -406,6 +500,9 @@ def create_listing():
         genre = (request.form.get("genre") or "").strip()
         location = (request.form.get("location") or "").strip()
         time_value = (request.form.get("time") or "").strip()
+        flyer_file = request.files.get("flyer_file")
+        flyer_file = request.files.get("flyer_file")
+        photos = request.files.getlist("photos")
 
         if not title:
             flash("Title is required.", "danger")
@@ -446,6 +543,81 @@ def create_listing():
                 form=request.form,
             )
 
+        valid_photos = [p for p in photos if p and p.filename]
+        if len(valid_photos) > 5:
+            flash("You can upload up to 5 photos.", "danger")
+            return render_template(
+                "create_listing.html",
+                genres=genres,
+                locations=locations,
+                form=request.form,
+                is_edit=False,
+                action_url=url_for("create_listing"),
+                submit_label="Post listing",
+                page_title="Create a listing",
+                page_subtitle="Post a gig to reach verified DJs fast.",
+            )
+
+        flyer_url = None
+        if flyer_file and flyer_file.filename:
+            filename = secure_filename(flyer_file.filename)
+            ext = os.path.splitext(filename)[1].lower()
+            if ext not in {".jpg", ".jpeg", ".png", ".gif", ".webp"}:
+                flash("Flyer must be an image file.", "danger")
+                return render_template(
+                    "create_listing.html",
+                    genres=genres,
+                    locations=locations,
+                    form=request.form,
+                )
+            os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+            unique_name = f"{uuid.uuid4().hex}{ext}"
+            save_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
+            flyer_file.save(save_path)
+            flyer_url = f"/{save_path}"
+
+        flyer_url = None
+        if flyer_file and flyer_file.filename:
+            filename = secure_filename(flyer_file.filename)
+            ext = os.path.splitext(filename)[1].lower()
+            if ext not in {".jpg", ".jpeg", ".png", ".gif", ".webp"}:
+                flash("Flyer must be an image file.", "danger")
+                return render_template(
+                    "create_listing.html",
+                    genres=genres,
+                    locations=locations,
+                    form=request.form,
+                    is_edit=True,
+                    action_url=url_for("edit_listing", listing_id=listing.id),
+                    submit_label="Save changes",
+                    page_title="Edit listing",
+                    page_subtitle="Update details for your gig.",
+                )
+            os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+            unique_name = f"{uuid.uuid4().hex}{ext}"
+            save_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
+            flyer_file.save(save_path)
+            flyer_url = f"/{save_path}"
+
+        saved_photos = []
+        if valid_photos:
+            os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+            for photo in valid_photos:
+                filename = secure_filename(photo.filename)
+                ext = os.path.splitext(filename)[1].lower()
+                if ext not in {".jpg", ".jpeg", ".png", ".gif", ".webp"}:
+                    flash("Photos must be image files.", "danger")
+                    return render_template(
+                        "create_listing.html",
+                        genres=genres,
+                        locations=locations,
+                        form=request.form,
+                    )
+                unique_name = f"{uuid.uuid4().hex}{ext}"
+                save_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
+                photo.save(save_path)
+                saved_photos.append(f"/{save_path}")
+
         listing = Listing(
             title=title,
             description=description or None,
@@ -454,14 +626,207 @@ def create_listing():
             city=location or None,
             time=time_value or None,
             profile_id=profile.id,
+            cover_image_url=flyer_url or (saved_photos[0] if saved_photos else None),
         )
         db.session.add(listing)
+        db.session.commit()
+
+        if flyer_url:
+            db.session.add(ListingPhoto(
+                listing_id=listing.id,
+                image_url=flyer_url,
+                is_cover=True,
+            ))
+        if saved_photos:
+            for idx, url in enumerate(saved_photos):
+                db.session.add(ListingPhoto(
+                    listing_id=listing.id,
+                    image_url=url,
+                    is_cover=(not flyer_url and idx == 0),
+                ))
         db.session.commit()
 
         flash("Listing created.", "success")
         return redirect(url_for("listing_detail", listing_id=listing.id))
 
-    return render_template("create_listing.html", genres=genres, locations=locations, form={})
+    return render_template(
+        "create_listing.html",
+        genres=genres,
+        locations=locations,
+        form={},
+        is_edit=False,
+        action_url=url_for("create_listing"),
+        submit_label="Post listing",
+        page_title="Create a listing",
+        page_subtitle="Post a gig to reach verified DJs fast.",
+    )
+
+@app.route("/listings/<int:listing_id>/edit", methods=["GET", "POST"], endpoint="edit_listing")
+@login_required
+def edit_listing(listing_id):
+    listing = Listing.query.get_or_404(listing_id)
+    if not listing.profile or listing.profile.user_id != current_user.id:
+        abort(403)
+
+    genres = Genre.query.order_by(Genre.name.asc()).all()
+    locations = Location.query.order_by(Location.name.asc()).all()
+
+    if request.method == "POST":
+        title = (request.form.get("title") or "").strip()
+        description = (request.form.get("description") or "").strip()
+        budget_raw = (request.form.get("budget") or "").strip()
+        genre = (request.form.get("genre") or "").strip()
+        location = (request.form.get("location") or "").strip()
+        time_value = (request.form.get("time") or "").strip()
+        photos = request.files.getlist("photos")
+
+        if not title:
+            flash("Title is required.", "danger")
+            return render_template(
+                "create_listing.html",
+                genres=genres,
+                locations=locations,
+                form=request.form,
+                is_edit=True,
+                action_url=url_for("edit_listing", listing_id=listing.id),
+                submit_label="Save changes",
+                page_title="Edit listing",
+                page_subtitle="Update details for your gig.",
+            )
+
+        budget = None
+        if budget_raw:
+            if not budget_raw.isdigit():
+                flash("Budget must be a number.", "danger")
+                return render_template(
+                    "create_listing.html",
+                    genres=genres,
+                    locations=locations,
+                    form=request.form,
+                    is_edit=True,
+                    action_url=url_for("edit_listing", listing_id=listing.id),
+                    submit_label="Save changes",
+                    page_title="Edit listing",
+                    page_subtitle="Update details for your gig.",
+                )
+            budget = int(budget_raw)
+
+        if genre and not Genre.query.filter_by(name=genre).first():
+            flash("Select a valid genre.", "danger")
+            return render_template(
+                "create_listing.html",
+                genres=genres,
+                locations=locations,
+                form=request.form,
+                is_edit=True,
+                action_url=url_for("edit_listing", listing_id=listing.id),
+                submit_label="Save changes",
+                page_title="Edit listing",
+                page_subtitle="Update details for your gig.",
+            )
+
+        if location and not Location.query.filter_by(name=location).first():
+            flash("Select a valid location.", "danger")
+            return render_template(
+                "create_listing.html",
+                genres=genres,
+                locations=locations,
+                form=request.form,
+                is_edit=True,
+                action_url=url_for("edit_listing", listing_id=listing.id),
+                submit_label="Save changes",
+                page_title="Edit listing",
+                page_subtitle="Update details for your gig.",
+            )
+
+        valid_photos = [p for p in photos if p and p.filename]
+        if len(valid_photos) > 5:
+            flash("You can upload up to 5 photos.", "danger")
+            return render_template(
+                "create_listing.html",
+                genres=genres,
+                locations=locations,
+                form=request.form,
+                is_edit=True,
+                action_url=url_for("edit_listing", listing_id=listing.id),
+                submit_label="Save changes",
+                page_title="Edit listing",
+                page_subtitle="Update details for your gig.",
+            )
+
+        saved_photos = []
+        if valid_photos:
+            os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+            for photo in valid_photos:
+                filename = secure_filename(photo.filename)
+                ext = os.path.splitext(filename)[1].lower()
+                if ext not in {".jpg", ".jpeg", ".png", ".gif", ".webp"}:
+                    flash("Photos must be image files.", "danger")
+                    return render_template(
+                        "create_listing.html",
+                        genres=genres,
+                        locations=locations,
+                        form=request.form,
+                        is_edit=True,
+                        action_url=url_for("edit_listing", listing_id=listing.id),
+                        submit_label="Save changes",
+                        page_title="Edit listing",
+                        page_subtitle="Update details for your gig.",
+                    )
+                unique_name = f"{uuid.uuid4().hex}{ext}"
+                save_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
+                photo.save(save_path)
+                saved_photos.append(f"/{save_path}")
+
+        listing.title = title
+        listing.description = description or None
+        listing.budget = budget
+        listing.genres = genre or None
+        listing.city = location or None
+        listing.time = time_value or None
+        if flyer_url:
+            listing.cover_image_url = flyer_url
+        elif saved_photos:
+            listing.cover_image_url = saved_photos[0]
+        db.session.commit()
+
+        if flyer_url:
+            db.session.add(ListingPhoto(
+                listing_id=listing.id,
+                image_url=flyer_url,
+                is_cover=True,
+            ))
+        if saved_photos:
+            for idx, url in enumerate(saved_photos):
+                db.session.add(ListingPhoto(
+                    listing_id=listing.id,
+                    image_url=url,
+                    is_cover=(not flyer_url and idx == 0),
+                ))
+            db.session.commit()
+
+        flash("Listing updated.", "success")
+        return redirect(url_for("listing_detail", listing_id=listing.id))
+
+    form = {
+        "title": listing.title,
+        "description": listing.description or "",
+        "budget": listing.budget or "",
+        "genre": listing.genres or "",
+        "location": listing.city or "",
+        "time": listing.time or "",
+    }
+    return render_template(
+        "create_listing.html",
+        genres=genres,
+        locations=locations,
+        form=form,
+        is_edit=True,
+        action_url=url_for("edit_listing", listing_id=listing.id),
+        submit_label="Save changes",
+        page_title="Edit listing",
+        page_subtitle="Update details for your gig.",
+    )
 
 @app.get("/my-listings", endpoint="my_listings")
 @login_required
@@ -477,6 +842,14 @@ def my_listings():
                          .filter(Profile.user_id == current_user.id, BookingRequest.status == "accepted")
                          .order_by(Listing.created_at.desc())
                          .all())
+    requester_profiles = {}
+    if upcoming_requests:
+        requester_ids = {req.requester_id for req in upcoming_requests}
+        if requester_ids:
+            profiles = (Profile.query
+                        .filter(Profile.user_id.in_(requester_ids))
+                        .all())
+            requester_profiles = {p.user_id: p for p in profiles}
     notifications = (ListingNotification.query
                      .join(Listing, ListingNotification.listing_id == Listing.id)
                      .join(Profile, Listing.profile_id == Profile.id)
@@ -494,6 +867,7 @@ def my_listings():
         "my_listings.html",
         listings=listings,
         upcoming_requests=upcoming_requests,
+        requester_profiles=requester_profiles,
         notifications_by_listing=notifications_by_listing,
         unread_counts=unread_counts,
     )
@@ -546,7 +920,10 @@ def my_profile():
         city = (request.form.get("city") or "").strip()
         genres_value = (request.form.get("genres") or "").strip()
         bio = (request.form.get("bio") or "").strip()
+        instagram_url_raw = (request.form.get("instagram_url") or "").strip()
+        spotify_url_raw = (request.form.get("spotify_url") or "").strip()
         avatar_file = request.files.get("avatar_file")
+        track_files = request.files.getlist("track_files")
 
         if not profile:
             profile = Profile(user_id=current_user.id)
@@ -559,9 +936,21 @@ def my_profile():
             flash("Select a valid genre.", "danger")
             return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations)
 
+        instagram_url = normalize_instagram_url(instagram_url_raw)
+        if instagram_url_raw and not instagram_url:
+            flash("Enter a valid Instagram profile URL (e.g. https://instagram.com/yourname).", "danger")
+            return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations)
+
+        spotify_url = normalize_spotify_url(spotify_url_raw)
+        if spotify_url_raw and not spotify_url:
+            flash("Enter a valid Spotify URL (artist, user, or playlist).", "danger")
+            return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations)
+
         profile.city = city or None
         profile.genres = genres_value or None
         profile.bio = bio or None
+        profile.instagram_url = instagram_url or None
+        profile.spotify_url = spotify_url or None
         if avatar_file and avatar_file.filename:
             filename = secure_filename(avatar_file.filename)
             ext = os.path.splitext(filename)[1].lower()
@@ -573,6 +962,36 @@ def my_profile():
             save_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
             avatar_file.save(save_path)
             profile.avatar_url = f"/{save_path}"
+
+        uploaded_tracks = [f for f in track_files if f and f.filename]
+        if uploaded_tracks:
+            if len(uploaded_tracks) > 3:
+                flash("You can upload up to 3 tracks.", "danger")
+                return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations)
+            allowed_audio_exts = {".mp3", ".m4a", ".wav", ".ogg", ".aac"}
+            for f in uploaded_tracks:
+                ext = os.path.splitext(secure_filename(f.filename))[1].lower()
+                if ext not in allowed_audio_exts:
+                    flash("Tracks must be audio files (mp3, m4a, wav, ogg, aac).", "danger")
+                    return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations)
+
+            ProfileTrack.query.filter_by(profile_id=profile.id).delete()
+            os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+            new_tracks = []
+            for idx, f in enumerate(uploaded_tracks, start=1):
+                filename = secure_filename(f.filename)
+                ext = os.path.splitext(filename)[1].lower()
+                unique_name = f"{uuid.uuid4().hex}{ext}"
+                save_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
+                f.save(save_path)
+                title = os.path.splitext(filename)[0].replace("_", " ").replace("-", " ").strip() or f"Track {idx}"
+                new_tracks.append(ProfileTrack(
+                    profile_id=profile.id,
+                    title=title,
+                    audio_url=f"/{save_path}",
+                    position=idx,
+                ))
+            db.session.add_all(new_tracks)
         db.session.commit()
 
         flash("Profile saved.", "success")
@@ -625,7 +1044,47 @@ def profile_search_api():
 @app.get("/p/<int:profile_id>", endpoint="profile_detail")
 def profile_detail(profile_id):
     profile = Profile.query.get_or_404(profile_id)
-    return render_template("profile_detail.html", profile=profile)
+    instagram_url = normalize_instagram_url(profile.instagram_url or "")
+    spotify_url = normalize_spotify_url(profile.spotify_url or "")
+    tracks = (ProfileTrack.query
+              .filter_by(profile_id=profile.id)
+              .order_by(ProfileTrack.position.asc())
+              .all())
+    avg_rating = (db.session.query(func.avg(Review.rating))
+                  .filter(Review.profile_id == profile.id)
+                  .scalar())
+    review_count = Review.query.filter_by(profile_id=profile.id).count()
+    avg_rating = float(avg_rating) if avg_rating is not None else 0.0
+
+    existing_review = None
+    can_review = False
+    if current_user.is_authenticated and current_user.id != profile.user_id:
+        existing_review = Review.query.filter_by(
+            profile_id=profile.id,
+            reviewer_id=current_user.id
+        ).first()
+        has_booking = (BookingRequest.query
+                       .join(Listing, BookingRequest.listing_id == Listing.id)
+                       .join(Profile, Listing.profile_id == Profile.id)
+                       .filter(
+                           BookingRequest.requester_id == profile.user_id,
+                           BookingRequest.status == "accepted",
+                           Profile.user_id == current_user.id
+                       )
+                       .first() is not None)
+        can_review = has_booking
+
+    return render_template(
+        "profile_detail.html",
+        profile=profile,
+        instagram_url=instagram_url,
+        spotify_url=spotify_url,
+        tracks=tracks,
+        avg_rating=avg_rating,
+        review_count=review_count,
+        can_review=can_review,
+        existing_review=existing_review,
+    )
 
 
 
@@ -637,6 +1096,47 @@ def go_signup_for_messages():
         return redirect(url_for("inbox"))
     flash("Create an account to start messaging.", "info")
     return redirect(url_for("signup"))
+
+@app.post("/profiles/<int:profile_id>/review", endpoint="profile_review")
+@login_required
+def profile_review(profile_id):
+    profile = Profile.query.get_or_404(profile_id)
+    if current_user.id == profile.user_id:
+        flash("You can’t review your own profile.", "danger")
+        return redirect(url_for("profile_detail", profile_id=profile.id))
+
+    has_booking = (BookingRequest.query
+                   .join(Listing, BookingRequest.listing_id == Listing.id)
+                   .join(Profile, Listing.profile_id == Profile.id)
+                   .filter(
+                       BookingRequest.requester_id == profile.user_id,
+                       BookingRequest.status == "accepted",
+                       Profile.user_id == current_user.id
+                   )
+                   .first() is not None)
+    if not has_booking:
+        flash("Only planners who booked this DJ can leave a review.", "danger")
+        return redirect(url_for("profile_detail", profile_id=profile.id))
+
+    rating_raw = (request.form.get("rating") or "").strip()
+    try:
+        rating = int(rating_raw)
+    except ValueError:
+        rating = 0
+    if rating < 1 or rating > 5:
+        flash("Select a star rating from 1 to 5.", "danger")
+        return redirect(url_for("profile_detail", profile_id=profile.id))
+
+    review = Review.query.filter_by(profile_id=profile.id, reviewer_id=current_user.id).first()
+    if review:
+        review.rating = rating
+    else:
+        review = Review(profile_id=profile.id, reviewer_id=current_user.id, rating=rating)
+        db.session.add(review)
+    db.session.commit()
+
+    flash("Thanks for reviewing!", "success")
+    return redirect(url_for("profile_detail", profile_id=profile.id))
 
 @app.get("/messages", endpoint="inbox")
 @login_required

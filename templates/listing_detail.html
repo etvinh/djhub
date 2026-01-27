@@ -9,6 +9,17 @@
     gap: 8px;
     flex-wrap: wrap;
   }
+  .booking-actions-group{
+    display:flex;
+    align-items:flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .booking-actions-group form{
+    display:flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
   .booking-btn{
     height: 36px;
     padding: 0 14px;
@@ -23,6 +34,35 @@
     background: #e5e7eb;
     color: #111827;
   }
+  .booking-actions-group .message-btn{
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #111827;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .requester{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    font-weight:800;
+    color:#111827;
+  }
+  .requester a{
+    color: inherit;
+    text-decoration: none;
+    font-weight: 800;
+  }
+  .requester-avatar{
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid #e2e8f0;
+  }
   .booking-chip{
     display:inline-flex;
     align-items:center;
@@ -33,6 +73,17 @@
     color: #111827;
     font-weight: 800;
     font-size: 12px;
+  }
+  .gallery{
+    display: grid;
+    gap: 12px;
+  }
+  .gallery img{
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
   }
   .archived-banner{
     margin-top: 10px;
@@ -94,6 +145,14 @@
             {{ listing.profile.user.username }}
           </a>
         </p>
+        {% if current_user.is_authenticated and current_user.id == listing.profile.user_id %}
+          <div style="margin-top:10px;">
+            <a href="{{ url_for('edit_listing', listing_id=listing.id) }}"
+               style="display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 12px;border-radius:999px;background:#0f172a;color:#fff;font-weight:800;text-decoration:none;">
+              Edit listing
+            </a>
+          </div>
+        {% endif %}
 
         {% if not current_user.is_authenticated or current_user.id != listing.profile.user_id %}
           <div style="margin-top:12px;">
@@ -111,8 +170,19 @@
           <h3 style="margin:0 0 10px 0;">Booking requests</h3>
           {% for req in booking_requests %}
             <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #f3f4f6;">
-              <div style="font-weight:800;color:#111827;">
-                {{ req.requester.username }}
+              <div class="requester">
+                {% set rp = requester_profiles.get(req.requester_id) %}
+                {% if rp %}
+                  <a href="{{ url_for('profile_detail', profile_id=rp.id) }}">
+                    <img class="requester-avatar" src="{{ rp.avatar_url or url_for('static', filename='default-avatar.png') }}" alt="{{ req.requester.username }}">
+                  </a>
+                  <a href="{{ url_for('profile_detail', profile_id=rp.id) }}">
+                    {{ req.requester.username }}
+                  </a>
+                {% else %}
+                  <img class="requester-avatar" src="{{ url_for('static', filename='default-avatar.png') }}" alt="{{ req.requester.username }}">
+                  <span>{{ req.requester.username }}</span>
+                {% endif %}
                 {% if req.status == "accepted" %}
                   <span style="color:#6b7280;font-weight:700;">booked the event</span>
                 {% else %}
@@ -120,12 +190,66 @@
                 {% endif %}
               </div>
               {% if req.status == "pending" and not listing.is_archived %}
-                <form method="POST" action="{{ url_for('respond_booking', booking_id=req.id) }}" class="booking-actions">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <button type="submit" name="action" value="accept" class="booking-btn">Accept</button>
-                  <span class="accept-warning">Accepting archives the listing</span>
-                  <button type="submit" name="action" value="decline" class="booking-btn secondary">Decline</button>
-                </form>
+                <div class="booking-actions-group">
+                  <form method="POST" action="{{ url_for('respond_booking', booking_id=req.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" name="action" value="accept" class="booking-btn">Accept</button>
+                    <span class="accept-warning">Accepting archives the listing</span>
+                    <button type="submit" name="action" value="decline" class="booking-btn secondary">Decline</button>
+                  </form>
+                  <div>
+                    {% from "_message_box.html" import message_box with context %}
+                    <button type="button" class="message-btn" onclick="
+                      const box = document.getElementById('msg-{{ req.requester_id }}');
+                      box.style.display = 'block';
+                      const ta = box.querySelector('textarea');
+                      if (ta) ta.focus();
+                    ">
+                      Message
+                    </button>
+                    <div id="msg-{{ req.requester_id }}" style="display:none;margin-top:10px;">
+                      {% if is_logged_in %}
+                        <form method="post" action="{{ url_for('start_conversation') }}">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <input type="hidden" name="recipient_id" value="{{ req.requester_id }}">
+                          <textarea name="body"
+                            rows="3"
+                            placeholder="Write a message…"
+                            style="width:100%;padding:8px;border-radius:8px;"
+                            required></textarea>
+                          <div style="margin-top:6px;display:flex;gap:8px;">
+                            <button type="submit" class="booking-btn">Send message</button>
+                            <button type="button" class="booking-btn secondary"
+                              onclick="document.getElementById('msg-{{ req.requester_id }}').style.display='none'">
+                              Cancel
+                            </button>
+                          </div>
+                        </form>
+                      {% else %}
+                        <div style="padding:10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
+                          <div style="margin-bottom:8px;color:#111827;">
+                            Create an account to start messaging.
+                          </div>
+                          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <a href="{{ url_for('signup') }}"
+                               style="display:inline-block;padding:8px 12px;border-radius:10px;background:#2563eb;color:#fff;text-decoration:none;">
+                              Sign up
+                            </a>
+                            <a href="{{ url_for('login') }}"
+                               style="display:inline-block;padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;text-decoration:none;">
+                              Log in
+                            </a>
+                            <button type="button"
+                              onclick="document.getElementById('msg-{{ req.requester_id }}').style.display='none'"
+                              style="padding:8px 12px;border-radius:10px;">
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
               {% else %}
                 <span class="booking-chip">{{ req.status }}</span>
               {% endif %}
@@ -179,6 +303,17 @@
           {% endif %}
         </div>
       {% endif %}
+    {% endif %}
+
+    {% if listing.photos %}
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid #e5e7eb;">
+        <h3 style="margin:0 0 8px 0;">Photos</h3>
+        <div class="gallery">
+          {% for photo in listing.photos %}
+            <img src="{{ photo.image_url }}" alt="{{ listing.title }}">
+          {% endfor %}
+        </div>
+      </div>
     {% endif %}
 
   </div>

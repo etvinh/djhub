@@ -49,10 +49,42 @@ class Profile(db.Model):
     genres = db.Column(db.String(200))
     bio = db.Column(db.Text)
     avatar_url = db.Column(db.String(255))
+    instagram_url = db.Column(db.String(255))
+    spotify_url = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):
         return f"<Profile id={self.id} user_id={self.user_id}>"
+
+class ProfileTrack(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    profile_id = db.Column(db.Integer, db.ForeignKey("profile.id"), nullable=False, index=True)
+    title = db.Column(db.String(120), nullable=False)
+    audio_url = db.Column(db.String(255), nullable=False)
+    position = db.Column(db.Integer, nullable=False, default=1)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    profile = db.relationship("Profile", backref="tracks")
+
+    def __repr__(self):
+        return f"<ProfileTrack profile_id={self.profile_id} position={self.position} title={self.title}>"
+
+class Review(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    profile_id = db.Column(db.Integer, db.ForeignKey("profile.id"), nullable=False, index=True)
+    reviewer_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    rating = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint("profile_id", "reviewer_id", name="uq_review_profile_reviewer"),
+    )
+
+    profile = db.relationship("Profile", backref="reviews")
+    reviewer = db.relationship("Users")
+
+    def __repr__(self):
+        return f"<Review profile_id={self.profile_id} reviewer_id={self.reviewer_id} rating={self.rating}>"
 # 4. Listing Model
 class Listing(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -66,6 +98,7 @@ class Listing(db.Model):
     description = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_archived = db.Column(db.Boolean, default=False, nullable=False)
+    cover_image_url = db.Column(db.String(255))
     profile_id = db.Column(
         db.Integer,
         db.ForeignKey("profile.id"),
@@ -77,6 +110,15 @@ class Listing(db.Model):
     
     def __repr__(self):
         return f"<Listing {self.title}>"
+
+class ListingPhoto(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    listing_id = db.Column(db.Integer, db.ForeignKey("listing.id"), nullable=False, index=True)
+    image_url = db.Column(db.String(255), nullable=False)
+    is_cover = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    listing = db.relationship("Listing", backref=db.backref("photos", cascade="all, delete-orphan"))
 
 class BookingRequest(db.Model):
     id = db.Column(db.Integer, primary_key=True)

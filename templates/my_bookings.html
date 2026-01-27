@@ -98,7 +98,7 @@
         <a class="booking-card" href="{{ url_for('listing_detail', listing_id=l.id, from='my_bookings') }}">
           <span class="booking-chip">Accepted</span>
           {% if unread_counts.get(l.id) %}
-            <span class="listing-badge">{{ unread_counts.get(l.id) }}</span>
+            <span class="listing-badge"></span>
           {% endif %}
           <div class="booking-title">{{ l.title }}</div>
           <div class="booking-meta">

@@ -132,6 +132,30 @@
           <input id="avatar_file" name="avatar_file" type="file" accept="image/*">
         </div>
         <div class="field full">
+          <label for="track_files">Top tracks (up to 3)</label>
+          <input id="track_files" name="track_files" type="file" accept="audio/*" multiple>
+        </div>
+        <div class="field">
+          <label for="instagram_url">Instagram URL</label>
+          <input
+            id="instagram_url"
+            name="instagram_url"
+            type="url"
+            placeholder="https://instagram.com/yourname"
+            value="{{ form.get('instagram_url', (profile.instagram_url or '') if profile else '') }}"
+          >
+        </div>
+        <div class="field">
+          <label for="spotify_url">Spotify URL</label>
+          <input
+            id="spotify_url"
+            name="spotify_url"
+            type="url"
+            placeholder="https://open.spotify.com/artist/..."
+            value="{{ form.get('spotify_url', (profile.spotify_url or '') if profile else '') }}"
+          >
+        </div>
+        <div class="field full">
           <label for="bio">Bio</label>
           <textarea id="bio" name="bio">{{ form.get('bio', profile.bio if profile else '') }}</textarea>
         </div>
