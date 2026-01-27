@@ -46,7 +46,7 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or os.urandom(32)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///djhub.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["UPLOAD_FOLDER"] = os.path.join("static", "uploads")
-app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = 30 * 1024 * 1024
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production"
@@ -155,6 +155,15 @@ def normalize_spotify_url(raw_value: str) -> str | None:
 
     return f"https://open.spotify.com/{kind}/{identifier}"
 
+def get_upload_size(file_storage) -> int:
+    try:
+        file_storage.stream.seek(0, os.SEEK_END)
+        size = file_storage.stream.tell()
+        file_storage.stream.seek(0)
+        return size
+    except Exception:
+        return 0
+
 
 
 
@@ -178,7 +187,7 @@ def listing_detail(listing_id):
         is_booked_dj = accepted_request and accepted_request.requester_id == current_user.id
         if not (is_owner or is_booked_dj):
             abort(404)
-    if current_user.is_authenticated and request.args.get("from") in ("my_listings", "my_bookings"):
+    if current_user.is_authenticated:
         ListingNotification.query.filter_by(
             listing_id=listing.id,
             recipient_id=current_user.id,
@@ -502,6 +511,7 @@ def create_listing():
         time_value = (request.form.get("time") or "").strip()
         flyer_file = request.files.get("flyer_file")
         flyer_file = request.files.get("flyer_file")
+        flyer_url = None
         photos = request.files.getlist("photos")
 
         if not title:
@@ -558,12 +568,19 @@ def create_listing():
                 page_subtitle="Post a gig to reach verified DJs fast.",
             )
 
-        flyer_url = None
         if flyer_file and flyer_file.filename:
             filename = secure_filename(flyer_file.filename)
             ext = os.path.splitext(filename)[1].lower()
             if ext not in {".jpg", ".jpeg", ".png", ".gif", ".webp"}:
                 flash("Flyer must be an image file.", "danger")
+                return render_template(
+                    "create_listing.html",
+                    genres=genres,
+                    locations=locations,
+                    form=request.form,
+                )
+            if get_upload_size(flyer_file) == 0:
+                flash("Flyer upload appears empty. Please reselect the file.", "danger")
                 return render_template(
                     "create_listing.html",
                     genres=genres,
@@ -593,6 +610,19 @@ def create_listing():
                     page_title="Edit listing",
                     page_subtitle="Update details for your gig.",
                 )
+            if get_upload_size(flyer_file) == 0:
+                flash("Flyer upload appears empty. Please reselect the file.", "danger")
+                return render_template(
+                    "create_listing.html",
+                    genres=genres,
+                    locations=locations,
+                    form=request.form,
+                    is_edit=True,
+                    action_url=url_for("edit_listing", listing_id=listing.id),
+                    submit_label="Save changes",
+                    page_title="Edit listing",
+                    page_subtitle="Update details for your gig.",
+                )
             os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
             unique_name = f"{uuid.uuid4().hex}{ext}"
             save_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
@@ -607,6 +637,14 @@ def create_listing():
                 ext = os.path.splitext(filename)[1].lower()
                 if ext not in {".jpg", ".jpeg", ".png", ".gif", ".webp"}:
                     flash("Photos must be image files.", "danger")
+                    return render_template(
+                        "create_listing.html",
+                        genres=genres,
+                        locations=locations,
+                        form=request.form,
+                    )
+                if get_upload_size(photo) == 0:
+                    flash("One of the photos appears empty. Please reselect the file.", "danger")
                     return render_template(
                         "create_listing.html",
                         genres=genres,
@@ -773,6 +811,19 @@ def edit_listing(listing_id):
                         page_title="Edit listing",
                         page_subtitle="Update details for your gig.",
                     )
+                if get_upload_size(photo) == 0:
+                    flash("One of the photos appears empty. Please reselect the file.", "danger")
+                    return render_template(
+                        "create_listing.html",
+                        genres=genres,
+                        locations=locations,
+                        form=request.form,
+                        is_edit=True,
+                        action_url=url_for("edit_listing", listing_id=listing.id),
+                        submit_label="Save changes",
+                        page_title="Edit listing",
+                        page_subtitle="Update details for your gig.",
+                    )
                 unique_name = f"{uuid.uuid4().hex}{ext}"
                 save_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
                 photo.save(save_path)
@@ -908,7 +959,8 @@ def seed_campus_data():
 
 @app.route("/profiles/search", endpoint="profile_search")
 def profile_search():
-    return render_template("profile_search.html")
+    genres = Genre.query.order_by(Genre.name.asc()).all()
+    return render_template("profile_search.html", genres=genres)
 
 @app.route("/my-profile", methods=["GET", "POST"], endpoint="my_profile")
 @login_required
@@ -916,14 +968,32 @@ def my_profile():
     profile = Profile.query.filter_by(user_id=current_user.id).first()
     genres = Genre.query.order_by(Genre.name.asc()).all()
     locations = Location.query.order_by(Location.name.asc()).all()
+    tracks = []
+    track_map = {}
+    if profile:
+        tracks = (ProfileTrack.query
+                  .filter_by(profile_id=profile.id)
+                  .order_by(ProfileTrack.position.asc())
+                  .all())
+        track_map = {t.position: t for t in tracks}
     if request.method == "POST":
         city = (request.form.get("city") or "").strip()
+        profile_type = (request.form.get("profile_type") or "").strip().lower()
         genres_value = (request.form.get("genres") or "").strip()
         bio = (request.form.get("bio") or "").strip()
         instagram_url_raw = (request.form.get("instagram_url") or "").strip()
         spotify_url_raw = (request.form.get("spotify_url") or "").strip()
         avatar_file = request.files.get("avatar_file")
-        track_files = request.files.getlist("track_files")
+        track_files = [
+            request.files.get("track_file_1"),
+            request.files.get("track_file_2"),
+            request.files.get("track_file_3"),
+        ]
+        track_titles = [
+            (request.form.get("track_title_1") or "").strip(),
+            (request.form.get("track_title_2") or "").strip(),
+            (request.form.get("track_title_3") or "").strip(),
+        ]
 
         if not profile:
             profile = Profile(user_id=current_user.id)
@@ -931,21 +1001,26 @@ def my_profile():
 
         if city and not Location.query.filter_by(name=city).first():
             flash("Select a valid location.", "danger")
-            return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations)
+            return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations, tracks=tracks, track_map=track_map)
         if genres_value and not Genre.query.filter_by(name=genres_value).first():
             flash("Select a valid genre.", "danger")
-            return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations)
+            return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations, tracks=tracks, track_map=track_map)
 
         instagram_url = normalize_instagram_url(instagram_url_raw)
         if instagram_url_raw and not instagram_url:
             flash("Enter a valid Instagram profile URL (e.g. https://instagram.com/yourname).", "danger")
-            return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations)
+            return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations, tracks=tracks, track_map=track_map)
 
         spotify_url = normalize_spotify_url(spotify_url_raw)
         if spotify_url_raw and not spotify_url:
             flash("Enter a valid Spotify URL (artist, user, or playlist).", "danger")
-            return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations)
+            return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations, tracks=tracks, track_map=track_map)
 
+        if profile_type not in {"dj", "planner"}:
+            flash("Select a valid profile type.", "danger")
+            return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations, tracks=tracks)
+
+        profile.profile_type = profile_type
         profile.city = city or None
         profile.genres = genres_value or None
         profile.bio = bio or None
@@ -956,48 +1031,73 @@ def my_profile():
             ext = os.path.splitext(filename)[1].lower()
             if ext not in {".jpg", ".jpeg", ".png", ".gif", ".webp"}:
                 flash("Avatar must be an image file.", "danger")
-                return render_template("my_profile.html", profile=profile, form=request.form)
+                return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations, tracks=tracks, track_map=track_map)
             os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
             unique_name = f"{uuid.uuid4().hex}{ext}"
             save_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
             avatar_file.save(save_path)
             profile.avatar_url = f"/{save_path}"
 
-        uploaded_tracks = [f for f in track_files if f and f.filename]
+        uploaded_tracks = []
+        for idx, f in enumerate(track_files):
+            if f and f.filename:
+                uploaded_tracks.append((idx + 1, f))
         if uploaded_tracks:
-            if len(uploaded_tracks) > 3:
-                flash("You can upload up to 3 tracks.", "danger")
-                return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations)
             allowed_audio_exts = {".mp3", ".m4a", ".wav", ".ogg", ".aac"}
-            for f in uploaded_tracks:
+            for position, f in uploaded_tracks:
+                if get_upload_size(f) > 10 * 1024 * 1024:
+                    flash(f"Track line {position} exceeds 10MB.", "danger")
+                    return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations, tracks=tracks, track_map=track_map)
                 ext = os.path.splitext(secure_filename(f.filename))[1].lower()
                 if ext not in allowed_audio_exts:
                     flash("Tracks must be audio files (mp3, m4a, wav, ogg, aac).", "danger")
-                    return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations)
+                    return render_template("my_profile.html", profile=profile, form=request.form, genres=genres, locations=locations, tracks=tracks, track_map=track_map)
 
             ProfileTrack.query.filter_by(profile_id=profile.id).delete()
             os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
             new_tracks = []
-            for idx, f in enumerate(uploaded_tracks, start=1):
+            for position, f in uploaded_tracks:
                 filename = secure_filename(f.filename)
                 ext = os.path.splitext(filename)[1].lower()
                 unique_name = f"{uuid.uuid4().hex}{ext}"
                 save_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
                 f.save(save_path)
-                title = os.path.splitext(filename)[0].replace("_", " ").replace("-", " ").strip() or f"Track {idx}"
+                title_input = track_titles[position - 1]
+                title = title_input or os.path.splitext(filename)[0].replace("_", " ").replace("-", " ").strip() or f"Track {position}"
                 new_tracks.append(ProfileTrack(
                     profile_id=profile.id,
                     title=title,
                     audio_url=f"/{save_path}",
-                    position=idx,
+                    position=position,
                 ))
             db.session.add_all(new_tracks)
+        else:
+            # Allow title-only updates without re-uploading files
+            existing_tracks = {t.position: t for t in tracks}
+            updated = False
+            for position in (1, 2, 3):
+                title_input = track_titles[position - 1]
+                if not title_input:
+                    continue
+                if existing_tracks.get(position):
+                    existing_tracks[position].title = title_input
+                    updated = True
+                else:
+                    existing_tracks[position] = ProfileTrack(
+                        profile_id=profile.id,
+                        title=title_input,
+                        audio_url="",
+                        position=position,
+                    )
+                    updated = True
+            if updated:
+                db.session.add_all(list(existing_tracks.values()))
         db.session.commit()
 
         flash("Profile saved.", "success")
         return redirect(url_for("my_profile"))
 
-    return render_template("my_profile.html", profile=profile, form={}, genres=genres, locations=locations)
+    return render_template("my_profile.html", profile=profile, form={}, genres=genres, locations=locations, tracks=tracks, track_map=track_map)
 
 @app.route("/about", endpoint="about")
 def about():
@@ -1007,26 +1107,46 @@ def about():
 @app.get("/api/profiles/search")
 def profile_search_api():
     q = (request.args.get("q") or "").strip()[:100]
-
-    if not q:
-        return jsonify({"profiles": []})
+    genre = (request.args.get("genre") or "").strip()[:100]
+    min_rating_raw = (request.args.get("min_rating") or "").strip()
+    page_raw = (request.args.get("page") or "1").strip()
+    try:
+        page = max(1, int(page_raw))
+    except ValueError:
+        page = 1
+    per_page = 12
+    try:
+        min_rating = float(min_rating_raw) if min_rating_raw else None
+    except ValueError:
+        min_rating = None
 
     like = f"%{q.lower()}%"
+    avg_rating = func.coalesce(func.avg(Review.rating), 0).label("avg_rating")
+    query = (db.session.query(Profile, avg_rating)
+             .join(Profile.user)
+             .outerjoin(Review, Review.profile_id == Profile.id)
+             .filter(Profile.profile_type == "dj")
+             .group_by(Profile.id))
 
-    results = (
-        Profile.query
-        .join(Profile.user)
-        .filter(
+    if q:
+        query = query.filter(
             or_(
                 func.lower(Users.username).like(like),
                 func.lower(Profile.city).like(like),
                 func.lower(Profile.genres).like(like),
             )
         )
-        .order_by(Users.username.asc())
-        .limit(10)
-        .all()
-    )
+    if genre:
+        query = query.filter(func.lower(Profile.genres).like(f"%{genre.lower()}%"))
+    if min_rating is not None:
+        query = query.having(avg_rating >= min_rating)
+
+    total = query.count()
+    results = (query
+               .order_by(Users.username.asc())
+               .offset((page - 1) * per_page)
+               .limit(per_page)
+               .all())
 
     return jsonify({
         "profiles": [
@@ -1036,9 +1156,12 @@ def profile_search_api():
                 "city": p.city or "",
                 "genres": p.genres or "",
                 "avatar_url": p.avatar_url or "/static/default-avatar.png",
+                "avg_rating": round(float(avg or 0), 1),
             }
-            for p in results
-        ]
+            for p, avg in results
+        ],
+        "has_next": (page * per_page) < total,
+        "next_page": page + 1 if (page * per_page) < total else None,
     })
 
 @app.get("/p/<int:profile_id>", endpoint="profile_detail")
@@ -1047,7 +1170,9 @@ def profile_detail(profile_id):
     instagram_url = normalize_instagram_url(profile.instagram_url or "")
     spotify_url = normalize_spotify_url(profile.spotify_url or "")
     tracks = (ProfileTrack.query
-              .filter_by(profile_id=profile.id)
+              .filter(ProfileTrack.profile_id == profile.id,
+                      ProfileTrack.audio_url.isnot(None),
+                      ProfileTrack.audio_url != "")
               .order_by(ProfileTrack.position.asc())
               .all())
     avg_rating = (db.session.query(func.avg(Review.rating))

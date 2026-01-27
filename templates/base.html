@@ -5,13 +5,13 @@
     <title>{% block title %}DJHub{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400" />
     <style>
         :root{
-          --font: "Space Grotesk", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-          --bg: #0b1220;
+          --font: "Orbitron", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+          --bg: #3a2556;
           --bg-2: #0f1b2d;
           --text: #e2e8f0;
           --muted: rgba(226,232,240,0.75);
@@ -27,6 +27,7 @@
         }
 
         /* Flash messages (keep your existing) */
+        .flash-wrap{ position: relative; z-index: 2; }
         .flash-message { padding: 10px; margin-bottom: 15px; border-radius: 10px; font-weight: 700; }
         .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
@@ -40,6 +41,53 @@
           background: var(--bg);
           position: relative;
           overflow-x: hidden;
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
+        }
+        *, *::before, *::after{ box-sizing: border-box; }
+        a{ transition: color 160ms ease, opacity 160ms ease; }
+        a:hover{ opacity: 0.95; }
+        button,
+        .primary-btn,
+        .ghost-btn,
+        .msg-btn,
+        .booking-btn,
+        .pill,
+        .review-btn,
+        .card-link{
+          transition: transform 160ms ease, box-shadow 200ms ease, filter 160ms ease, background 200ms ease, border-color 200ms ease;
+        }
+        button:hover,
+        .primary-btn:hover,
+        .ghost-btn:hover,
+        .msg-btn:hover,
+        .booking-btn:hover,
+        .pill:hover,
+        .review-btn:hover,
+        .card-link:hover{
+          transform: translateY(-1px);
+          filter: brightness(1.02);
+        }
+        input, textarea, select{
+          transition: border-color 160ms ease, box-shadow 200ms ease, background 200ms ease;
+        }
+        :where(.card, .detail-card, .booking-card, .listing-card, .profile-card, .chat-shell, .card-link){
+          transition: transform 180ms ease, box-shadow 220ms ease, border-color 220ms ease;
+        }
+        :where(.card, .detail-card, .booking-card, .listing-card, .profile-card, .chat-shell, .card-link):hover{
+          transform: translateY(-2px);
+          box-shadow: 0 18px 40px rgba(8,12,24,0.35);
+        }
+        :focus-visible{
+          outline: 2px solid rgba(108,75,255,0.7);
+          outline-offset: 2px;
+        }
+        @keyframes riseIn{
+          from{ opacity: 0; transform: translateY(8px); }
+          to{ opacity: 1; transform: translateY(0); }
+        }
+        @media (prefers-reduced-motion: reduce){
+          *{ animation: none !important; transition: none !important; }
         }
         body::before{
           content: "";
@@ -48,9 +96,9 @@
           pointer-events: none;
           background:
             linear-gradient(120deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.12) 36%, rgba(255,255,255,0.0) 66%),
-            linear-gradient(210deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.0) 48%),
-            radial-gradient(1200px 620px at 18% -12%, rgba(79,124,255,0.38), transparent 66%),
-            radial-gradient(900px 520px at 88% 6%, rgba(56,189,248,0.34), transparent 62%);
+            linear-gradient(210deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.0) 48%),
+            radial-gradient(1200px 620px at 18% -12%, rgba(175,115,255,0.38), transparent 66%),
+            radial-gradient(900px 520px at 88% 6%, rgba(112,78,255,0.34), transparent 62%);
           mix-blend-mode: screen;
           z-index: 0;
         }
@@ -82,31 +130,45 @@
         }
 
         .brand{
-          display: flex;
+          width: 46px;
+          height: 46px;
+          border-radius: 999px;
+          display: inline-flex;
           align-items: center;
-          gap: 10px;
+          justify-content: center;
           color: #fff;
           text-decoration: none;
           font-weight: 900;
-          letter-spacing: -0.02em;
-          padding: 8px 10px;
-          border-radius: 12px;
+          letter-spacing: 0.08em;
+          position: relative;
         }
-        .brand:hover{ background: rgba(255,255,255,0.08); }
-
+        .brand::before{
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: 999px;
+          background: url("{{ url_for('static', filename='img/homedisc.png') }}") center / cover no-repeat;
+          -webkit-mask-image: radial-gradient(circle at center, #000 99%, transparent 100%);
+          mask-image: radial-gradient(circle at center, #000 99%, transparent 100%);
+          transition: transform 400ms ease;
+        }
+        .brand:hover::before{ transform: rotate(180deg); }
         .brand-mark{
-          width: 28px;
-          height: 28px;
-          border-radius: 10px;
-          background: rgba(255,255,255,0.12);
-          border: 1px solid rgba(255,255,255,0.18);
+          position: relative;
+          z-index: 1;
+          width: 34px;
+          height: 34px;
+          border-radius: 999px;
+          background: rgba(15,23,42,0.65);
+          border: 1px solid rgba(255,255,255,0.12);
           display: inline-flex;
           align-items: center;
           justify-content: center;
           font-weight: 900;
           color: #fff;
+          font-size: 12px;
         }
-        .brand-name{ font-size: 14px; }
+        .brand-name{ display: none; }
 
         .nav-links{
           display: flex;
@@ -227,16 +289,191 @@
         }
         .ghost-btn:hover{ filter: brightness(1.05); }
 
+        .msg-btn{
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          height: 36px;
+          padding: 0 14px;
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.16);
+          background: #6c4bff;
+          color: #fff;
+          font-weight: 900;
+          font-size: 12px;
+          text-decoration: none;
+          cursor: pointer;
+        }
+        .msg-btn.secondary{
+          background: rgba(255,255,255,0.10);
+          color: #fff;
+          border: 1px solid rgba(255,255,255,0.18);
+        }
+        .msg-btn.link{
+          text-decoration: none;
+        }
+
         main{
           max-width: 1100px;
           margin: 0 auto;
           padding: 0 16px 60px;
+          animation: riseIn 420ms ease both;
+        }
+
+        .toast-stack{
+          position: fixed;
+          top: 78px;
+          right: 18px;
+          display: grid;
+          gap: 10px;
+          z-index: 200;
+          max-width: min(360px, 92vw);
+        }
+        .toast{
+          display:flex;
+          align-items:flex-start;
+          gap: 10px;
+          padding: 12px 14px;
+          border-radius: 14px;
+          border: 1px solid rgba(255,255,255,0.14);
+          background: rgba(15,23,42,0.92);
+          box-shadow: 0 18px 40px rgba(2,6,23,0.35);
+          color: #f8fafc;
+          font-weight: 800;
+          font-size: 12px;
+          animation: riseIn 320ms ease both;
+        }
+        .toast.success{ border-color: rgba(34,197,94,0.4); }
+        .toast.danger{ border-color: rgba(239,68,68,0.45); }
+        .toast.info{ border-color: rgba(56,189,248,0.45); }
+        .toast.warning{ border-color: rgba(234,179,8,0.5); }
+        .toast .toast-close{
+          margin-left: auto;
+          background: transparent;
+          border: 0;
+          color: inherit;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
+        .fab{
+          position: fixed;
+          right: 20px;
+          bottom: 20px;
+          z-index: 80;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 16px;
+          border-radius: 999px;
+          background: linear-gradient(140deg, #7c4dff, #4f7cff);
+          color: #fff;
+          text-decoration: none;
+          font-weight: 900;
+          box-shadow: 0 18px 40px rgba(76,55,255,0.35);
+          border: 1px solid rgba(255,255,255,0.16);
+        }
+        .fab .material-symbols-outlined{ font-size: 18px; }
+
+        .stat-chips{
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .stat-chip{
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 10px;
+          border-radius: 999px;
+          background: rgba(255,255,255,0.10);
+          border: 1px solid rgba(255,255,255,0.18);
+          color: rgba(255,255,255,0.9);
+          font-weight: 900;
+          font-size: 11px;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+
+        .segmented{
+          display: inline-flex;
+          background: rgba(255,255,255,0.10);
+          border: 1px solid rgba(255,255,255,0.18);
+          border-radius: 999px;
+          padding: 4px;
+          gap: 4px;
+        }
+        .segmented input{
+          position: absolute;
+          opacity: 0;
+          pointer-events: none;
+        }
+        .segmented label{
+          padding: 6px 12px;
+          border-radius: 999px;
+          font-size: 11px;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          color: rgba(255,255,255,0.9);
+          cursor: pointer;
+        }
+        .segmented input:checked + label{
+          background: rgba(255,255,255,0.18);
+          color: #fff;
+        }
+
+        .tilt-card{
+          transform-style: preserve-3d;
+          perspective: 800px;
+          position: relative;
+        }
+        .tilt-card::after{
+          content: "";
+          position: absolute;
+          inset: -1px;
+          background: radial-gradient(420px 220px at 20% 0%, rgba(255,255,255,0.18), transparent 60%);
+          opacity: 0;
+          transition: opacity 240ms ease;
+          pointer-events: none;
+        }
+        .tilt-card:hover::after{ opacity: 1; }
+
+        .global-loader{
+          position: fixed;
+          inset: 0;
+          display: none;
+          align-items: center;
+          justify-content: center;
+          background: rgba(8,12,24,0.7);
+          backdrop-filter: blur(4px);
+          z-index: 300;
+        }
+        .global-loader.active{ display: flex; }
+        .loader-disc{
+          width: 90px;
+          height: 90px;
+          border-radius: 999px;
+          background: url("{{ url_for('static', filename='img/homedisc.png') }}") center / cover no-repeat;
+          animation: spin 1.4s linear infinite;
+          box-shadow: 0 12px 30px rgba(2,6,23,0.45);
+        }
+        .loader-text{
+          margin-top: 12px;
+          font-weight: 900;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          font-size: 11px;
+          color: #e2e8f0;
+          text-align: center;
+        }
+        @keyframes spin{
+          to{ transform: rotate(360deg); }
         }
 
         /* Mobile */
         @media (max-width: 640px){
           .user-info{ display:none; }
-          .brand-name{ display:none; }
         }
     </style>
 </head>
@@ -308,9 +545,12 @@
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        <div style="max-width:1100px;margin:16px auto;padding:0 16px;">
+        <div class="toast-stack" id="toastStack">
           {% for category, message in messages %}
-            <div class="flash-message {{ category }}">{{ message }}</div>
+            <div class="toast {{ category }}">
+              <span>{{ message }}</span>
+              <button class="toast-close" type="button" aria-label="Dismiss">✕</button>
+            </div>
           {% endfor %}
         </div>
       {% endif %}
@@ -321,5 +561,37 @@
     </main>
 
     {% block scripts %}{% endblock %}
+
+    <div class="global-loader" id="globalLoader" aria-hidden="true">
+      <div>
+        <div class="loader-disc"></div>
+        <div class="loader-text">Loading</div>
+      </div>
+    </div>
+
+    <script>
+      const toastStack = document.getElementById("toastStack");
+      if (toastStack) {
+        toastStack.querySelectorAll(".toast").forEach((toast) => {
+          const closeBtn = toast.querySelector(".toast-close");
+          const timer = setTimeout(() => toast.remove(), 4200);
+          closeBtn?.addEventListener("click", () => {
+            clearTimeout(timer);
+            toast.remove();
+          });
+        });
+      }
+
+      const globalLoader = document.getElementById("globalLoader");
+      document.querySelectorAll("form").forEach((form) => {
+        form.addEventListener("submit", () => {
+          if (!globalLoader) return;
+          const method = (form.getAttribute("method") || "get").toLowerCase();
+          if (method !== "post") return;
+          globalLoader.classList.add("active");
+          globalLoader.setAttribute("aria-hidden", "false");
+        });
+      });
+    </script>
 </body>
 </html>

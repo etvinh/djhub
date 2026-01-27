@@ -3,12 +3,12 @@
 
 <style>
   :root{
-    --bg: #f6f7fb;
-    --card: #ffffff;
-    --text: #0f172a;
-    --muted: #64748b;
-    --border: #e5e7eb;
-    --shadow: 0 10px 30px rgba(2, 6, 23, 0.08);
+    --bg: #1a0d2b;
+    --card: rgba(26,12,55,0.92);
+    --text: #f8fafc;
+    --muted: rgba(226,232,240,0.72);
+    --border: rgba(255,255,255,0.12);
+    --shadow: 0 10px 30px rgba(9, 6, 23, 0.30);
     --radius: 18px;
   }
 
@@ -19,7 +19,7 @@
   }
 
   .chat-shell{
-    background: var(--card);
+    background: linear-gradient(135deg, #0a1028 0%, #141b3a 100%);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
@@ -35,7 +35,7 @@
     align-items: center;
     padding: 14px 16px;
     border-bottom: 1px solid var(--border);
-    background: linear-gradient(to bottom, #fff, #fafafa);
+    background: linear-gradient(to bottom, rgba(26,12,55,0.95), rgba(26,12,55,0.85));
   }
 
   .chat-header .back{
@@ -45,7 +45,7 @@
     padding: 8px 10px;
     border-radius: 12px;
   }
-  .chat-header .back:hover{ background: #f1f5f9; color: var(--text); }
+  .chat-header .back:hover{ background: rgba(255,255,255,0.08); color: var(--text); }
 
   .chat-header .title{
     display:flex;
@@ -74,7 +74,7 @@
     flex: 1;
     overflow: auto;
     padding: 16px;
-    background: var(--bg);
+    background: #ffffff;
   }
 
   .empty{
@@ -96,14 +96,14 @@
     padding: 10px 12px;
     border-radius: 16px;
     border: 1px solid var(--border);
-    background: #fff;
-    color: var(--text);
+    background: #ffffff;
+    color: #0f172a;
     white-space: pre-wrap;
     word-wrap: break-word;
   }
 
   .msg-row.me .bubble{
-    background: #0b5fff;
+    background: #6c4bff;
     color: #fff;
     border-color: rgba(255,255,255,0.18);
     border-top-right-radius: 8px;
@@ -117,7 +117,7 @@
   .meta{
     margin-top: 6px;
     font-size: 11px;
-    color: rgba(100,116,139,0.9);
+    color: #64748b;
   }
   .msg-row.me .meta{
     text-align: right;
@@ -127,7 +127,7 @@
   .composer{
     border-top: 1px solid var(--border);
     padding: 12px;
-    background: #fff;
+    background: linear-gradient(135deg, #0a1028 0%, #141b3a 100%);
   }
 
   .composer-inner{
@@ -146,6 +146,8 @@
     border: 1px solid var(--border);
     outline: none;
     font-size: 14px;
+    background: #f8fafc;
+    color: #0f172a;
   }
 
   .composer textarea:focus{
@@ -159,7 +161,7 @@
     border: 0;
     border-radius: 14px;
     font-weight: 900;
-    background: #0b5fff;
+    background: #6c4bff;
     color: #fff;
     cursor: pointer;
     white-space: nowrap;

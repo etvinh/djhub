@@ -29,10 +29,10 @@
     content: "";
     position: fixed;
     inset: 0;
-    background: rgba(11,18,32,0.82);
+    pointer-events: none;
+    background: rgba(15,23,42,0.45);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
-    pointer-events: none;
     z-index: 0;
   }
   .djhub-feed{
@@ -63,13 +63,28 @@
     min-height: 410px;
     border-radius: 18px;
     overflow: hidden;
+    border: 1px solid rgba(5, 8, 20, 0.65);
     background:
-      linear-gradient(90deg, rgba(0,0,0,0.80) 0%, rgba(0,0,0,0.35) 55%, rgba(0,0,0,0.10) 100%),
+      linear-gradient(90deg, rgba(8,12,28,0.92) 0%, rgba(10,16,40,0.62) 55%, rgba(10,20,52,0.28) 100%),
       url("{{ url_for('static', filename='img/hero-dj.jpg') }}");
     background-size: cover;
-    background-position: center;
+    background-position: center var(--parallax-y, center);
     box-shadow: var(--shadow);
     margin-top: 80px;
+  }
+  .hero::before{
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(120deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.05) 35%, rgba(255,255,255,0.0) 62%),
+      radial-gradient(700px 260px at 20% 0%, rgba(79,124,255,0.35), transparent 60%);
+    mix-blend-mode: screen;
+    pointer-events: none;
+  }
+  .hero-inner{
+    position: relative;
+    z-index: 1;
   }
 
   .hero-inner{
@@ -91,12 +106,18 @@
     color: #fff;
     font-weight: 900;
     text-transform: uppercase;
+    font-family: "Orbitron", var(--font);
+    background: linear-gradient(180deg, #ffffff 0%, #c7b9ff 45%, #f5f3ff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 8px 22px rgba(9,6,23,0.45);
   }
 
   .hero p{
     margin: 12px 0 18px;
     max-width: 560px;
-    color: rgba(255,255,255,0.86);
+    color: rgba(226,232,240,0.86);
     font-weight: 600;
     font-size: 14px;
   }
@@ -113,12 +134,15 @@
     align-items:center;
     padding: 10px 14px;
     border-radius: 999px;
-    border: 1px solid rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.16);
     background: rgba(255,255,255,0.10);
     color: #fff;
     font-weight: 900;
     font-size: 12px;
     backdrop-filter: blur(6px);
+  }
+  .hero .pill{
+    color: #fff;
   }
   .pill.primary{
     background: var(--blue);
@@ -134,35 +158,35 @@
     
   }
   .searchbar{
-    background: rgba(255,255,255,0.95);
+    background: #ffffff;
     border-radius: 12px;
     padding: 10px;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 10px;
-    box-shadow: 0 18px 50px rgba(0,0,0,0.28);
-    border: 1px solid rgba(255,255,255,0.55);
+    box-shadow: 0 18px 50px rgba(15,23,42,0.12);
+    border: 1px solid rgba(15,23,42,0.10);
   }
   .searchbar input{
     height: 40px;
 
     border-radius: 10px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #e2e8f0;
     padding: 0 12px;
     outline: none;
     font-weight: 650;
     color: #0f172a;
-    background: #fff;
+    background: #f8fafc;
   }
   .searchbar select{
     height: 40px;
     border-radius: 10px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #e2e8f0;
     padding: 0 32px 0 12px;
     outline: none;
     font-weight: 650;
     color: #0f172a;
-    background: #fff;
+    background: #f8fafc;
     appearance: none;
   }
   .searchbar input:focus{
@@ -177,7 +201,7 @@
     height: 40px;
     border: 0;
     border-radius: 10px;
-    background: #0f172a;
+    background: #1f2a44;
     color: #fff;
     font-weight: 900;
     cursor: pointer;
@@ -203,7 +227,7 @@
     letter-spacing: 0.10em;
     text-transform: uppercase;
     font-weight: 900;
-    color: #0f172a;
+    color: #fff;
   }
   .section-row .section-title{
     margin: 0;
@@ -216,7 +240,7 @@
   .sort-label{
     font-weight: 900;
     font-size: 12px;
-    color: #0f172a;
+    color: #fff;
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
@@ -229,16 +253,6 @@
     font-size: 13px;
     color: #0f172a;
     background: #fff;
-  }
-  .sort-form button{
-    height: 40px;
-    padding: 0 12px;
-    border: 0;
-    border-radius: 10px;
-    background: #0f172a;
-    color: #fff;
-    font-weight: 900;
-    cursor: pointer;
   }
 
   /* ===== Cards grid ===== */
@@ -256,12 +270,12 @@
     position: relative;
     display: block;
     border-radius: 18px;
-    border: 1px solid rgba(255,255,255,0.12);
-    box-shadow: var(--shadow2);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 16px 40px rgba(9,6,23,0.45);
     overflow: hidden;
     width: 100%;
     aspect-ratio: 3 / 4;
-    background: radial-gradient(120% 80% at 20% 0%, rgba(79,124,255,0.3), rgba(15,23,42,0.9));
+    background: linear-gradient(135deg, #0a1028 0%, #141b3a 100%);
     background-image: var(--flyer, none);
     background-size: cover;
     background-position: center;
@@ -273,13 +287,13 @@
   }
 
   .card.no-flyer{
-    background-image: linear-gradient(180deg, rgba(79,124,255,0.22), rgba(15,23,42,0.92));
+    background-image: linear-gradient(135deg, #0a1028 0%, #141b3a 100%);
   }
   .flyer-overlay{
     position: absolute;
     inset: 0;
     background:
-      linear-gradient(180deg, rgba(2,6,23,0.12) 0%, rgba(2,6,23,0.55) 62%, rgba(2,6,23,0.88) 100%);
+      linear-gradient(180deg, rgba(10,16,40,0.12) 0%, rgba(10,16,40,0.62) 62%, rgba(10,16,40,0.90) 100%);
   }
   .flyer-content{
     position: absolute;
@@ -304,8 +318,8 @@
     font-size: 14px;
     font-weight: 900;
     color: #fff;
-    background: rgba(15,23,42,0.6);
-    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(15,23,42,0.65);
+    border: 1px solid rgba(255,255,255,0.14);
     padding: 6px 10px;
     border-radius: 999px;
   }
@@ -426,8 +440,8 @@
   <div class="hero">
     <div class="hero-inner">
       <div class="hero-content">
-        <h1>Connect with the city’s best sound.</h1>
-        <p>The professional marketplace for venues hiring talent and verified DJs.</p>
+        <h1>ballsack waterballoon.</h1>
+        <p>testicles.</p>
 
         <!-- Optional CTAs (front-end only). Remove if you don’t want extra UI. -->
         <div class="hero-ctas">
@@ -483,7 +497,7 @@
     <ul id="listing-feed" class="listings">
       {% for l in listings %}
         <li class="listing">
-          <a class="card {% if not l.cover_image_url %}no-flyer{% endif %}"
+          <a class="card tilt-card {% if not l.cover_image_url %}no-flyer{% endif %}"
              href="{{ url_for('listing_detail', listing_id=l.id) }}"
              {% if l.cover_image_url %}style="--flyer:url('{{ l.cover_image_url }}');"{% endif %}>
             <div class="flyer-overlay"></div>
@@ -515,6 +529,16 @@
 </div>
 
 <script>
+  const hero = document.querySelector(".hero");
+  if (hero) {
+    const onScroll = () => {
+      const offset = Math.min(80, window.scrollY * 0.2);
+      hero.style.setProperty("--parallax-y", `calc(50% + ${offset}px)`);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  }
+
   // === Your existing backend stays identical; just render new card markup ===
   const btn = document.getElementById('loadMore');
   const feed = document.getElementById('listing-feed');
@@ -550,7 +574,7 @@ const res = await fetch(`/api/listings?${params.toString()}`);
         const flyerStyle = l.cover_image_url ? `style="--flyer:url('${esc(l.cover_image_url)}');"` : "";
         const flyerClass = l.cover_image_url ? "" : "no-flyer";
         li.innerHTML = `
-          <a class="card ${flyerClass}" href="/l/${esc(l.id)}" ${flyerStyle}>
+          <a class="card tilt-card ${flyerClass}" href="/l/${esc(l.id)}" ${flyerStyle}>
             <div class="flyer-overlay"></div>
             <div class="flyer-top">
               <span class="badge">${esc(l.genres || "Gig")}</span>

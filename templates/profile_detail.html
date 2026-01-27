@@ -6,14 +6,14 @@
 
 <style>
   :root{
-    --bg:#f6f7fb;
-    --card:#ffffff;
-    --text:#0f172a;
-    --muted:#64748b;
-    --border:#e5e7eb;
-    --shadow:0 18px 50px rgba(2,6,23,0.10);
+    --bg:#1a0d2b;
+    --card: rgba(26,12,55,0.92);
+    --text:#f8fafc;
+    --muted:rgba(226,232,240,0.72);
+    --border: rgba(255,255,255,0.12);
+    --shadow:0 18px 50px rgba(9,6,23,0.35);
     --radius:18px;
-    --blue:#2f6bff;
+    --blue:#6c4bff;
   }
 
   .profile-page *{ box-sizing: border-box; }
@@ -31,7 +31,7 @@
     align-items:center;
     gap: 8px;
     margin-bottom: 14px;
-    color: #0b5fff;
+    color: #c4b5fd;
     text-decoration: none;
     font-weight: 900;
     font-size: 13px;
@@ -43,12 +43,9 @@
     position: relative;
     border-radius: var(--radius);
     overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.14);
+    border: 1px solid rgba(255,255,255,0.12);
     box-shadow: var(--shadow);
-    background:
-      radial-gradient(1200px 400px at 20% 0%, rgba(47,107,255,0.18), transparent 60%),
-      radial-gradient(900px 400px at 80% 0%, rgba(0,0,0,0.10), transparent 55%),
-      linear-gradient(to bottom, #0b1220, #0b1220);
+    background: linear-gradient(135deg, #0a1028 0%, #141b3a 100%);
   }
 
   .profile-hero-inner{
@@ -152,10 +149,10 @@
   }
 
   .card{
-    background: #fff;
+    background: linear-gradient(135deg, #0a1028 0%, #141b3a 100%);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    box-shadow: 0 10px 30px rgba(2,6,23,0.06);
+    box-shadow: 0 10px 30px rgba(9,6,23,0.18);
     padding: 16px;
     margin-top: 14px;
   }
@@ -166,7 +163,7 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     font-weight: 950;
-    color: #0f172a;
+    color: #f8fafc;
   }
 
   .rating-summary{
@@ -199,7 +196,7 @@
   }
   .rating-text{
     font-weight: 900;
-    color: #0f172a;
+    color: #f8fafc;
   }
   .review-form{
     margin-top: 10px;
@@ -248,7 +245,7 @@
     gap: 12px;
     padding: 12px;
     border-radius: 14px;
-    background: #0b1220;
+    background: rgba(26,12,55,0.9);
     border: 1px solid rgba(255,255,255,0.08);
     color: #fff;
   }
@@ -293,7 +290,7 @@
   }
 
   .bio{
-    color: #111827;
+    color: rgba(226,232,240,0.9);
     white-space: pre-wrap;
     line-height: 1.5;
     font-size: 14px;
@@ -325,7 +322,7 @@
           {% if profile.city %}<span>• {{ profile.city }}</span>{% endif %}
         </div>
 
-        {% if instagram_url or spotify_url %}
+        {% if profile.profile_type == 'dj' and (instagram_url or spotify_url) %}
           <div class="socials">
             {% if instagram_url %}
               <a class="social-btn" href="{{ instagram_url }}" target="_blank" rel="noopener noreferrer" title="Instagram">
@@ -340,11 +337,13 @@
           </div>
         {% endif %}
 
-        <div class="pill-row">
-          {% if profile.genres %}
-            <span class="pill blue">{{ profile.genres }}</span>
-          {% endif %}
-        </div>
+        {% if profile.profile_type == 'dj' %}
+          <div class="pill-row">
+            {% if profile.genres %}
+              <span class="pill blue">{{ profile.genres }}</span>
+            {% endif %}
+          </div>
+        {% endif %}
 
         {# Keep your existing message behavior, just styled in place #}
         {% if is_logged_in and current_user.id != profile.user_id %}
@@ -367,7 +366,7 @@
     </div>
   {% endif %}
 
-  {% if tracks %}
+  {% if profile.profile_type == 'dj' and tracks %}
     <div class="card">
       <h2>Top tracks</h2>
       <div class="tracks">

@@ -45,6 +45,7 @@ class Profile(db.Model):
 
     user = db.relationship("Users", back_populates="profiles") #profile inherets user
 
+    profile_type = db.Column(db.String(20), default="dj")
     city = db.Column(db.String(120))
     genres = db.Column(db.String(200))
     bio = db.Column(db.Text)

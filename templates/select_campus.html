@@ -4,6 +4,24 @@
 
 {% block content %}
 <style>
+  body{
+    background: url("{{ url_for('static', filename='img/feedbackground.png') }}") center / cover fixed no-repeat;
+    position: relative;
+  }
+  body::before{
+    content: "";
+    position: fixed;
+    inset: 0;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: rgba(11,18,32,0.55);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .campus-page{
+    position: relative;
+    z-index: 1;
+  }
   .campus-page{
     min-height: calc(100vh - 60px);
     display:flex;

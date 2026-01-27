@@ -3,6 +3,73 @@
 
 {% block content %}
 <style>
+  :root{
+    --bg:#1a0d2b;
+    --card: rgba(26,12,55,0.92);
+    --text:#f8fafc;
+    --muted:rgba(226,232,240,0.72);
+    --border: rgba(255,255,255,0.12);
+    --shadow:0 18px 50px rgba(9,6,23,0.35);
+    --purple:#6c4bff;
+  }
+  .detail-page{
+    max-width: 880px;
+    margin: 24px auto 80px;
+    padding: 0 16px;
+    color: var(--text);
+  }
+  .back-link{
+    display:inline-flex;
+    align-items:center;
+    margin-bottom: 16px;
+    color: #c4b5fd;
+    text-decoration: none;
+    font-weight: 800;
+  }
+  .detail-card{
+    padding: 18px;
+    border-radius: 18px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  .detail-title{
+    margin: 0 0 8px 0;
+    font-size: 24px;
+    font-weight: 900;
+  }
+  .detail-meta{
+    color: var(--muted);
+    display:flex;
+    flex-wrap:wrap;
+    gap: 10px;
+    margin-top: 6px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .detail-section{
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,0.10);
+  }
+  .section-title{
+    margin: 0 0 8px 0;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 900;
+    color: #e5e7eb;
+  }
+  .archived-banner{
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.08);
+    color: #e5e7eb;
+    font-weight: 800;
+    font-size: 12px;
+    border: 1px solid rgba(255,255,255,0.12);
+  }
   .booking-actions{
     margin-top: 12px;
     display:flex;
@@ -25,22 +92,23 @@
     padding: 0 14px;
     border-radius: 999px;
     border: 0;
-    background: #111827;
+    background: var(--purple);
     color: #fff;
     font-weight: 800;
     cursor: pointer;
   }
   .booking-btn.secondary{
-    background: #e5e7eb;
-    color: #111827;
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.16);
   }
   .booking-actions-group .message-btn{
     height: 36px;
     padding: 0 14px;
     border-radius: 999px;
-    border: 1px solid #e5e7eb;
-    background: #fff;
-    color: #111827;
+    border: 1px solid rgba(255,255,255,0.16);
+    background: rgba(255,255,255,0.08);
+    color: #fff;
     font-weight: 800;
     cursor: pointer;
   }
@@ -49,7 +117,7 @@
     align-items:center;
     gap: 10px;
     font-weight:800;
-    color:#111827;
+    color:#fff;
   }
   .requester a{
     color: inherit;
@@ -61,7 +129,7 @@
     height: 36px;
     border-radius: 999px;
     object-fit: cover;
-    border: 1px solid #e2e8f0;
+    border: 1px solid rgba(255,255,255,0.16);
   }
   .booking-chip{
     display:inline-flex;
@@ -69,8 +137,8 @@
     height: 28px;
     padding: 0 10px;
     border-radius: 999px;
-    background: #f3f4f6;
-    color: #111827;
+    background: rgba(255,255,255,0.12);
+    color: #fff;
     font-weight: 800;
     font-size: 12px;
   }
@@ -83,17 +151,7 @@
     aspect-ratio: 1 / 1;
     object-fit: cover;
     border-radius: 12px;
-    border: 1px solid #e2e8f0;
-  }
-  .archived-banner{
-    margin-top: 10px;
-    padding: 10px 12px;
-    border-radius: 12px;
-    background: #f1f5f9;
-    color: #0f172a;
-    font-weight: 800;
-    font-size: 12px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid rgba(255,255,255,0.12);
   }
   .accept-warning{
     display:inline-flex;
@@ -101,25 +159,23 @@
     height: 28px;
     padding: 0 10px;
     border-radius: 999px;
-    background: #fffbeb;
-    color: #b45309;
-    border: 1px solid #fcd34d;
+    background: rgba(234,179,8,0.16);
+    color: #fde68a;
+    border: 1px solid rgba(234,179,8,0.35);
     font-weight: 800;
     font-size: 11px;
   }
 </style>
-<div style="max-width: 780px; margin: 24px auto; padding: 0 16px;">
-  <a href="{{ url_for('listings_feed') }}" style="display:inline-block;margin-bottom:16px;color:#2563eb;text-decoration:none;">
-    ← Back to feed
-  </a>
+<div class="detail-page">
+  <a class="back-link" href="{{ url_for('listings_feed') }}">← Back to feed</a>
 
-  <div style="padding:16px;border:1px solid #e5e7eb;border-radius:16px;background:#fff;">
-    <h1 style="margin:0 0 8px 0;">{{ listing.title }}</h1>
+  <div class="detail-card">
+    <h1 class="detail-title">{{ listing.title }}</h1>
     {% if listing.is_archived %}
       <div class="archived-banner">This listing is archived and only visible to the planner and booked DJ.</div>
     {% endif %}
 
-    <div style="color:#6b7280; display:flex; flex-wrap:wrap; gap:10px; margin-top:6px;">
+    <div class="detail-meta">
       {% if listing.date %}<span><strong>Date:</strong> {{ listing.date.strftime("%b %d, %Y") }}</span>{% endif %}
       {% if listing.time %}<span><strong>Time:</strong> {{ listing.time }}</span>{% endif %}
       {% if listing.city %}<span><strong>Location:</strong> {{ listing.city }}</span>{% endif %}
@@ -128,27 +184,27 @@
     </div>
 
     {% if listing.description %}
-      <div style="margin-top:16px;">
-        <h3 style="margin:0 0 8px 0;">Details</h3>
-        <div style="white-space:pre-wrap; color:#111827;">{{ listing.description }}</div>
+      <div class="detail-section">
+        <h3 class="section-title">Details</h3>
+        <div style="white-space:pre-wrap; color:rgba(226,232,240,0.9);">{{ listing.description }}</div>
       </div>
     {% endif %}
 
     {% from "_message_box.html" import message_box with context %}
 
-    <div style="margin-top:16px;padding-top:14px;border-top:1px solid #e5e7eb;">
+    <div class="detail-section">
       {% if listing.profile %}
-        <p style="margin:0;color:#6b7280;">
+        <p style="margin:0;color:var(--muted);">
           Posted by
           <a href="{{ url_for('profile_detail', profile_id=listing.profile.id) }}"
-             style="color:#2563eb;text-decoration:none;font-weight:800;">
+             style="color:#c4b5fd;text-decoration:none;font-weight:800;">
             {{ listing.profile.user.username }}
           </a>
         </p>
         {% if current_user.is_authenticated and current_user.id == listing.profile.user_id %}
           <div style="margin-top:10px;">
             <a href="{{ url_for('edit_listing', listing_id=listing.id) }}"
-               style="display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 12px;border-radius:999px;background:#0f172a;color:#fff;font-weight:800;text-decoration:none;">
+               style="display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 12px;border-radius:999px;background:#6c4bff;color:#fff;font-weight:800;text-decoration:none;">
               Edit listing
             </a>
           </div>
@@ -166,10 +222,10 @@
 
     {% if listing.profile %}
       {% if current_user.is_authenticated and current_user.id == listing.profile.user_id %}
-        <div style="margin-top:14px;padding-top:14px;border-top:1px solid #e5e7eb;">
-          <h3 style="margin:0 0 10px 0;">Booking requests</h3>
+        <div class="detail-section">
+          <h3 class="section-title">Booking requests</h3>
           {% for req in booking_requests %}
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #f3f4f6;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid rgba(255,255,255,0.10);">
               <div class="requester">
                 {% set rp = requester_profiles.get(req.requester_id) %}
                 {% if rp %}
@@ -184,9 +240,9 @@
                   <span>{{ req.requester.username }}</span>
                 {% endif %}
                 {% if req.status == "accepted" %}
-                  <span style="color:#6b7280;font-weight:700;">booked the event</span>
+                  <span style="color:var(--muted);font-weight:700;">booked the event</span>
                 {% else %}
-                  <span style="color:#6b7280;font-weight:700;">requested to book</span>
+                  <span style="color:var(--muted);font-weight:700;">requested to book</span>
                 {% endif %}
               </div>
               {% if req.status == "pending" and not listing.is_archived %}
@@ -226,17 +282,17 @@
                           </div>
                         </form>
                       {% else %}
-                        <div style="padding:10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
-                          <div style="margin-bottom:8px;color:#111827;">
+                        <div style="padding:10px;border:1px solid rgba(255,255,255,0.16);border-radius:10px;background:rgba(26,12,55,0.95);">
+                          <div style="margin-bottom:8px;color:#fff;">
                             Create an account to start messaging.
                           </div>
                           <div style="display:flex;gap:8px;flex-wrap:wrap;">
                             <a href="{{ url_for('signup') }}"
-                               style="display:inline-block;padding:8px 12px;border-radius:10px;background:#2563eb;color:#fff;text-decoration:none;">
+                               style="display:inline-block;padding:8px 12px;border-radius:10px;background:#6c4bff;color:#fff;text-decoration:none;">
                               Sign up
                             </a>
                             <a href="{{ url_for('login') }}"
-                               style="display:inline-block;padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;text-decoration:none;">
+                               style="display:inline-block;padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.16);color:#fff;text-decoration:none;">
                               Log in
                             </a>
                             <button type="button"
@@ -257,7 +313,7 @@
           {% endfor %}
         </div>
       {% else %}
-        <div style="margin-top:14px;padding-top:14px;border-top:1px solid #e5e7eb;">
+        <div class="detail-section">
           {% if listing.is_archived %}
             {% if current_request %}
               <span class="booking-chip">Booking {{ current_request.status }}</span>
@@ -278,17 +334,17 @@
                 Request booking
               </button>
               <div id="auth-request" style="display:none;margin-top:10px;">
-                <div style="padding:10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
-                  <div style="margin-bottom:8px;color:#111827;font-weight:800;">
+                <div style="padding:10px;border:1px solid rgba(255,255,255,0.16);border-radius:10px;background:rgba(26,12,55,0.95);">
+                  <div style="margin-bottom:8px;color:#fff;font-weight:800;">
                     Create an account to request bookings.
                   </div>
                   <div style="display:flex;gap:8px;flex-wrap:wrap;">
                     <a href="{{ url_for('signup') }}"
-                       style="display:inline-block;padding:8px 12px;border-radius:10px;background:#2563eb;color:#fff;text-decoration:none;">
+                       style="display:inline-block;padding:8px 12px;border-radius:10px;background:#6c4bff;color:#fff;text-decoration:none;">
                       Sign up
                     </a>
                     <a href="{{ url_for('login') }}"
-                       style="display:inline-block;padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;text-decoration:none;">
+                       style="display:inline-block;padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.16);color:#fff;text-decoration:none;">
                       Log in
                     </a>
                     <button type="button"
@@ -306,8 +362,8 @@
     {% endif %}
 
     {% if listing.photos %}
-      <div style="margin-top:16px;padding-top:14px;border-top:1px solid #e5e7eb;">
-        <h3 style="margin:0 0 8px 0;">Photos</h3>
+      <div class="detail-section">
+        <h3 class="section-title">Photos</h3>
         <div class="gallery">
           {% for photo in listing.photos %}
             <img src="{{ photo.image_url }}" alt="{{ listing.title }}">

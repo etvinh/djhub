@@ -14,12 +14,14 @@ CITIES = ["Santa Cruz"]
 GENRES = ["House", "Techno", "HipHop", "EDM", "Lo-Fi"]
 
 USER_SEED = [
-
     ("djalex",  "password123"),
     ("djethan", "password123"),
     ("djmia",   "password123"),
     ("djzoe",   "password123"),
 ]
+
+for i in range(1, 41):
+    USER_SEED.append((f"dj{i:02d}", "password123"))
 
 def pick(seq):
     return random.choice(seq)
@@ -55,12 +57,12 @@ with app.app_context():
         profiles = [
             Profile(
                 user_id=user.id,
+                profile_type="dj",
                 city=pick(CITIES),
                 genres=pick(GENRES),
                 bio="DJ available for gigs and events.",
                 avatar_url=f"https://api.dicebear.com/7.x/identicon/svg?seed={username}-dj"
             )
-           
         ]
 
         db.session.add_all(profiles)

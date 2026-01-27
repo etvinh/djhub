@@ -1,5 +1,5 @@
 {% macro message_box(recipient_id) %}
-  <button type="button"
+  <button type="button" class="msg-btn"
     onclick="
       const box = document.getElementById('msg-{{ recipient_id }}');
       box.style.display = 'block';
@@ -22,8 +22,8 @@
           required></textarea>
 
         <div style="margin-top:6px;display:flex;gap:8px;">
-          <button type="submit">Send message</button>
-          <button type="button"
+          <button type="submit" class="msg-btn">Send message</button>
+          <button type="button" class="msg-btn secondary"
             onclick="document.getElementById('msg-{{ recipient_id }}').style.display='none'">
             Cancel
           </button>
@@ -36,16 +36,15 @@
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <a href="{{ url_for('signup') }}"
-             style="display:inline-block;padding:8px 12px;border-radius:10px;background:#2563eb;color:#fff;text-decoration:none;">
+             class="msg-btn link">
             Sign up
           </a>
           <a href="{{ url_for('login') }}"
-             style="display:inline-block;padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;text-decoration:none;">
+             class="msg-btn secondary link">
             Log in
           </a>
-          <button type="button"
-            onclick="document.getElementById('msg-{{ recipient_id }}').style.display='none'"
-            style="padding:8px 12px;border-radius:10px;">
+          <button type="button" class="msg-btn secondary"
+            onclick="document.getElementById('msg-{{ recipient_id }}').style.display='none'">
             Cancel
           </button>
         </div>

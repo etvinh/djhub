@@ -5,44 +5,63 @@
 
 <style>
   :root{
-    --bg:#0b1220;
-    --card: rgba(17,24,39,0.92);
-    --border: rgba(255,255,255,0.10);
-    --muted: rgba(226,232,240,0.72);
-    --text: rgba(255,255,255,0.92);
-    --blue:#2f6bff;
+    --bg:#f8fafc;
+    --card: rgba(255,255,255,0.92);
+    --border: rgba(15,23,42,0.12);
+    --muted: #64748b;
+    --text: #0f172a;
+    --blue:#4f7cff;
   }
 
   .search-page *{ box-sizing:border-box; }
+
+  body{
+    background: #f8fafc;
+    position: relative;
+  }
+  body::before{
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(120deg, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.28) 36%, rgba(255,255,255,0.0) 66%),
+      linear-gradient(210deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.0) 48%),
+      radial-gradient(1200px 620px at 18% -12%, rgba(255,255,255,0.55), transparent 66%),
+      radial-gradient(900px 520px at 88% 6%, rgba(226,232,240,0.45), transparent 62%);
+    mix-blend-mode: screen;
+    z-index: 0;
+  }
 
   .search-page{
     
   }
 
   .search-shell{
-    max-width: 860px;
+    max-width: 980px;
     margin: 24px auto 0;
     padding: 0 16px 80px;
+    position: relative;
+    z-index: 1;
   }
 
   .search-hero{
     border-radius: 18px;
     padding: 22px;
-    background:
-      linear-gradient(90deg, rgba(0,0,0,0.80) 0%, rgba(0,0,0,0.35) 55%, rgba(0,0,0,0.10) 100%);
+    background: linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(248,250,252,0.96) 100%);
       /*
       radial-gradient(900px 360px at 20% 0%, rgba(47,107,255,0.22), transparent 60%),
       radial-gradient(800px 360px at 80% 0%, rgba(255,255,255,0.10), transparent 55%),
       rgba(17,24,39,0.86);
       */
     border: 1px solid var(--border);
-    box-shadow: 0 30px 80px rgba(2,6,23,0.45);
+    box-shadow: 0 30px 80px rgba(15,23,42,0.12);
     overflow:hidden;
   }
 
   .search-hero h1{
     margin: 0;
-    color: #fff;
+    color: #0f172a;
     font-size: 28px;
     font-weight: 950;
     letter-spacing: -0.02em;
@@ -60,8 +79,8 @@
     display:flex;
     gap: 10px;
     align-items:center;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.8);
+    border: 1px solid rgba(15,23,42,0.12);
     border-radius: 14px;
     padding: 10px;
   }
@@ -70,31 +89,31 @@
     flex: 1;
     height: 44px;
     border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.14);
-    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(15,23,42,0.12);
+    background: #f8fafc;
     padding: 0 14px;
-    color: #fff;
+    color: #0f172a;
     font-size: 14px;
     font-weight: 750;
     outline: none;
   }
-  #q::placeholder{ color: rgba(226,232,240,0.45); }
+  #q::placeholder{ color: #94a3b8; }
   #q:focus{
-    border-color: rgba(47,107,255,0.7);
-    box-shadow: 0 0 0 4px rgba(47,107,255,0.22);
-    background: rgba(255,255,255,0.10);
+    border-color: rgba(79,124,255,0.7);
+    box-shadow: 0 0 0 4px rgba(79,124,255,0.18);
+    background: #ffffff;
   }
 
   .hint{
     margin-top: 10px;
-    color: rgba(226,232,240,0.55);
+    color: #64748b;
     font-weight: 700;
     font-size: 12px;
   }
 
   #status{
     margin-top: 10px;
-    color: rgba(226,232,240,0.72);
+    color: #64748b;
     font-weight: 800;
     font-size: 12px;
   }
@@ -103,60 +122,97 @@
   #results{
     margin-top: 14px;
     display: grid;
-    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+  }
+  .filters{
+    margin-top: 16px;
+    display:grid;
+    grid-template-columns: 1fr 220px 180px;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .filters select{
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid rgba(15,23,42,0.12);
+    background: #f8fafc;
+    padding: 0 12px;
+    font-weight: 700;
+    color: #0f172a;
   }
 
   /* Result card */
   .result-card{
-    display:flex;
-    gap: 12px;
-    align-items:center;
-    padding: 12px;
-    border-radius: 16px;
-    background: rgba(17,24,39,0.92);
-    border: 1px solid rgba(255,255,255,0.10);
-    box-shadow: 0 14px 40px rgba(2,6,23,0.25);
+    position: relative;
+    display: block;
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 16px 40px rgba(9,6,23,0.45);
+    overflow: hidden;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    background: linear-gradient(135deg, #0a1028 0%, #141b3a 100%);
     text-decoration:none;
     color: #fff;
-    transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+    transition: transform 160ms ease, box-shadow 160ms ease;
   }
   .result-card:hover{
     transform: translateY(-2px);
-    box-shadow: 0 22px 60px rgba(2,6,23,0.32);
-    border-color: rgba(255,255,255,0.16);
+    box-shadow: 0 22px 60px rgba(15,23,42,0.18);
   }
-
-  .avatar{
-    width: 52px;
-    height: 52px;
+  .result-overlay{
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg, rgba(10,16,40,0.12) 0%, rgba(10,16,40,0.62) 62%, rgba(10,16,40,0.90) 100%);
+  }
+  .result-top{
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    right: 14px;
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .result-content{
+    position: absolute;
+    inset: 0;
+    display:flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 16px;
+    gap: 6px;
+  }
+  .avatar-circle{
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    transform: translate(-50%, -50%);
+    width: 160px;
+    height: 160px;
     border-radius: 999px;
     object-fit: cover;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.06);
-    flex: 0 0 auto;
-  }
-
-  .name-row{
-    display:flex;
-    gap: 8px;
-    align-items:baseline;
-    flex-wrap: wrap;
+    border: 3px solid rgba(255,255,255,0.95);
+    box-shadow: 0 16px 40px rgba(15,23,42,0.25);
+    background: #f8fafc;
   }
 
   .display{
     font-weight: 950;
     letter-spacing: -0.01em;
+    color: rgba(255,255,255,0.96);
   }
-
   .handle{
-    color: rgba(226,232,240,0.70);
+    color: rgba(226,232,240,0.75);
     font-weight: 850;
     font-size: 12px;
   }
-
   .meta{
-    margin-top: 4px;
-    color: rgba(226,232,240,0.65);
+    margin-top: 0;
+    color: rgba(226,232,240,0.75);
     font-weight: 750;
     font-size: 12px;
   }
@@ -166,37 +222,105 @@
     align-items:center;
     padding: 6px 10px;
     border-radius: 999px;
-    border: 1px solid rgba(255,255,255,0.14);
-    background: rgba(255,255,255,0.08);
-    color: rgba(255,255,255,0.90);
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(15,23,42,0.65);
+    color: #fff;
     font-weight: 900;
     font-size: 11px;
-    margin-left: auto;
     white-space: nowrap;
   }
 
   @media (max-width: 560px){
+    #results{ grid-template-columns: 1fr; }
     .chip{ display:none; }
     .search-hero h1{ font-size: 24px; }
+  }
+  @media (max-width: 980px){
+    #results{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  .load-wrap{
+    display:flex;
+    justify-content:center;
+    margin-top: 18px;
+  }
+  #loadMoreProfiles{
+    width: 140px;
+    aspect-ratio: 1 / 1;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: #fff;
+    font-weight: 900;
+    cursor: pointer;
+    position: relative;
+    display: grid;
+    place-items: center;
+  }
+  #loadMoreProfiles::before{
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: url("{{ url_for('static', filename='img/homedisc.png') }}") center / cover no-repeat;
+    -webkit-mask-image: radial-gradient(circle at center, #000 99%, transparent 100%);
+    mask-image: radial-gradient(circle at center, #000 99%, transparent 100%);
+    transition: transform 400ms ease;
+  }
+  #loadMoreProfiles span{
+    position: relative;
+    z-index: 1;
+    background: rgba(15,23,42,0.65);
+    border: 1px solid rgba(255,255,255,0.12);
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #fff;
+  }
+  #loadMoreProfiles:hover::before{
+    transform: rotate(180deg);
+  }
+  #loadMoreProfiles:disabled{
+    opacity: 0.65;
+    cursor:not-allowed;
   }
 </style>
 
   <div class="search-shell">
 
     <div class="search-hero">
-      <h1>Find a DJ 🔍</h1>
-      <p>Search by username, city, or genres. Results update as you type.</p>
-
-      <div class="searchbar">
-        <input id="q" type="search" placeholder="Type a username…" autofocus autocomplete="off">
-        <span style="color: rgba(226,232,240,0.55); font-weight: 900;">@</span>
-      </div>
-
-      <div class="hint">Tip: try “house”, “oakland”, or “@djname”</div>
-      <div id="status"></div>
+      <h1>Explore DJs</h1>
+      <p>Live results as you type. Filter by genre or rating.</p>
     </div>
 
+    <div class="filters">
+      <div class="searchbar">
+        <input id="q" type="search" placeholder="Search username, city, genre…" autofocus autocomplete="off">
+        <span style="color: #94a3b8; font-weight: 900;">@</span>
+      </div>
+      <select id="genre">
+        <option value="">All genres</option>
+        {% for g in genres %}
+          <option value="{{ g.name }}">{{ g.name }}</option>
+        {% endfor %}
+      </select>
+      <select id="minRating">
+        <option value="">Any rating</option>
+        <option value="4">4★ & up</option>
+        <option value="3">3★ & up</option>
+        <option value="2">2★ & up</option>
+        <option value="1">1★ & up</option>
+      </select>
+    </div>
+
+    <div class="hint">Tip: try “house”, “oakland”, or “@djname”</div>
+    <div id="status"></div>
+
     <div id="results"></div>
+    <div class="load-wrap" id="loadWrap" hidden>
+      <button id="loadMoreProfiles"><span>Load more</span></button>
+    </div>
 
   </div>
 
@@ -204,9 +328,13 @@
 
 {% block scripts %}
 <script>
-  const input = document.getElementById("q");        // ✅ your existing search bar
-  const results = document.getElementById("results"); // ✅ your existing results container
+  const input = document.getElementById("q");
+  const genreSelect = document.getElementById("genre");
+  const ratingSelect = document.getElementById("minRating");
+  const results = document.getElementById("results");
   const status = document.getElementById("status");
+  const loadWrap = document.getElementById("loadWrap");
+  const loadBtn = document.getElementById("loadMoreProfiles");
 
   function esc(s) {
     return String(s ?? "").replace(/[&<>"']/g, c => ({
@@ -215,59 +343,88 @@
   }
 
   let t = null;
+  let nextPage = 1;
+  let hasNext = false;
+  let loading = false;
 
-  input?.addEventListener("input", () => {
+  function renderProfiles(profiles, append = false){
+    const html = profiles.map(p => `
+      <a class="result-card tilt-card" href="/p/${esc(p.id)}">
+        <div class="result-overlay"></div>
+        <img class="avatar-circle" src="${esc(p.avatar_url)}" alt="">
+        <div class="result-top">
+          <span class="chip">${p.avg_rating ? esc(p.avg_rating) : "0.0"} ★</span>
+        </div>
+        <div class="result-content">
+          <div class="display">${esc(p.username || "")}</div>
+          <div class="handle">@${esc(p.username || "")}</div>
+          <div class="meta">${esc(p.city || "Location TBA")}${p.genres ? " • " + esc(p.genres) : ""}</div>
+        </div>
+      </a>
+    `).join("");
+    if (append) {
+      results.insertAdjacentHTML("beforeend", html);
+    } else {
+      results.innerHTML = html;
+    }
+  }
+
+  async function runSearch(reset = false){
+    if (loading) return;
+    loading = true;
     clearTimeout(t);
-
     t = setTimeout(async () => {
       let q = input.value.trim();
-
-      // Optional: allow "@djname" searches by stripping leading "@"
       if (q.startsWith("@")) q = q.slice(1);
 
-      if (!q) {
+      if (reset) {
+        nextPage = 1;
+        hasNext = false;
         results.innerHTML = "";
-        if (status) status.textContent = "";
-        return;
       }
+
+      const params = new URLSearchParams();
+      if (q) params.set("q", q);
+      if (genreSelect?.value) params.set("genre", genreSelect.value);
+      if (ratingSelect?.value) params.set("min_rating", ratingSelect.value);
+      params.set("page", String(nextPage));
 
       if (status) status.textContent = "Searching…";
 
       try {
-        const res = await fetch(`/api/profiles/search?q=${encodeURIComponent(q)}`);
+        const res = await fetch(`/api/profiles/search?${params.toString()}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const data = await res.json();
         const profiles = data.profiles || [];
 
-        if (profiles.length === 0) {
+        if (profiles.length === 0 && nextPage === 1) {
           results.innerHTML = "";
           if (status) status.textContent = "No matches.";
+          if (loadWrap) loadWrap.hidden = true;
+          loading = false;
           return;
         }
 
         if (status) status.textContent = `${profiles.length} match${profiles.length === 1 ? "" : "es"}`;
 
-        // Render using YOUR existing card styles (.result-card, .avatar, etc.)
-        results.innerHTML = profiles.map(p => `
-          <a class="result-card" href="/p/${esc(p.id)}">
-            <img class="avatar" src="${esc(p.avatar_url)}" alt="">
-            <div style="min-width:0">
-              <div class="name-row">
-                <div class="display">${esc(p.username || "")}</div>
-                <div class="handle">@${esc(p.username || "")}</div>
-              </div>
-              <div class="meta">${esc(p.city || "")}${p.genres ? " • " + esc(p.genres) : ""}</div>
-            </div>
-            ${p.genres ? `<span class="chip">${esc(p.genres)}</span>` : ""}
-          </a>
-        `).join("");
+        renderProfiles(profiles, nextPage > 1);
+        hasNext = !!data.has_next;
+        nextPage = data.next_page || (nextPage + 1);
+        if (loadWrap) loadWrap.hidden = !hasNext;
 
       } catch (err) {
         console.error("Profile search failed:", err);
         if (status) status.textContent = "Search failed. Check console.";
       }
-    }, 250);
-  });
+      loading = false;
+    }, 200);
+  }
+
+  input?.addEventListener("input", () => runSearch(true));
+  genreSelect?.addEventListener("change", () => runSearch(true));
+  ratingSelect?.addEventListener("change", () => runSearch(true));
+  loadBtn?.addEventListener("click", () => runSearch(false));
+  runSearch(true);
 </script>
 {% endblock %}
