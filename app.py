@@ -4,6 +4,8 @@ import uuid
 import secrets
 import smtplib
 from email.message import EmailMessage
+import json
+import urllib.request
 from collections import defaultdict, deque
 from time import time
 from urllib.parse import urlparse, urljoin
@@ -65,6 +67,7 @@ app.config["SMTP_USERNAME"] = os.environ.get("SMTP_USERNAME")
 app.config["SMTP_PASSWORD"] = os.environ.get("SMTP_PASSWORD")
 app.config["SMTP_USE_TLS"] = os.environ.get("SMTP_USE_TLS", "true").lower() == "true"
 app.config["SMTP_FROM"] = os.environ.get("SMTP_FROM")
+app.config["SENDGRID_API_KEY"] = os.environ.get("SENDGRID_API_KEY")
 
 db.init_app(app)
 csrf = CSRFProtect(app)
@@ -120,8 +123,37 @@ def generate_verification_code() -> str:
     return f"{secrets.randbelow(1000000):06d}"
 
 def send_verification_email(to_email: str, code: str) -> bool:
-    host = app.config.get("SMTP_HOST")
     from_addr = app.config.get("SMTP_FROM")
+    api_key = app.config.get("SENDGRID_API_KEY")
+    if api_key and from_addr:
+        payload = {
+            "personalizations": [{"to": [{"email": to_email}]}],
+            "from": {"email": from_addr},
+            "subject": "Your DJHub verification code",
+            "content": [
+                {
+                    "type": "text/plain",
+                    "value": f"Your DJHub verification code is {code}. It expires in 10 minutes.",
+                }
+            ],
+        }
+        try:
+            req = urllib.request.Request(
+                "https://api.sendgrid.com/v3/mail/send",
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                return 200 <= resp.status < 300
+        except Exception:
+            app.logger.exception("Failed to send verification email via SendGrid API.")
+            return False
+
+    host = app.config.get("SMTP_HOST")
     if not host or not from_addr:
         app.logger.warning("SMTP not configured; skipping verification email.")
         return False
@@ -134,7 +166,7 @@ def send_verification_email(to_email: str, code: str) -> bool:
         f"{code}. It expires in 10 minutes."
     )
     try:
-        with smtplib.SMTP(host, app.config["SMTP_PORT"], timeout=10) as server:
+        with smtplib.SMTP(host, app.config["SMTP_PORT"], timeout=6) as server:
             if app.config.get("SMTP_USE_TLS", True):
                 server.starttls()
             if app.config.get("SMTP_USERNAME") and app.config.get("SMTP_PASSWORD"):
