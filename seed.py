@@ -48,7 +48,9 @@ with app.app_context():
     for username, pw in USER_SEED:
         user = Users(
             username=username,
+            email=f"{username}@example.com",
             password=generate_password_hash(pw, method="scrypt"),  # ✅ matches your login code
+            email_verified=True,
         )
         db.session.add(user)
         db.session.flush()  # 🔑 ensures user.id exists

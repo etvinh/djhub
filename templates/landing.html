@@ -157,6 +157,40 @@
       border-radius: 999px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.25);
     }
+    .word-clip{
+      display: inline-block;
+      position: relative;
+      overflow: hidden;
+      height: 1em;
+      vertical-align: bottom;
+      min-width: 8ch;
+    }
+    .word{
+      position: absolute;
+      left: 0;
+      top: 0;
+      white-space: nowrap;
+      transform: translateY(-120%);
+      opacity: 1;
+      will-change: transform, opacity;
+    }
+    .word.current{
+      transform: translateY(0%);
+    }
+    .word.enter{
+      animation: wordIn 0.6s ease forwards;
+    }
+    .word.exit{
+      animation: wordOut 0.6s ease forwards;
+    }
+    @keyframes wordIn{
+      to{ transform: translateY(0%); opacity: 1; }
+    }
+    @keyframes wordOut{
+      0%{ transform: translateY(0%); opacity: 1; }
+      90%{ transform: translateY(120%); opacity: 1; }
+      100%{ transform: translateY(120%); opacity: 0; }
+    }
     @media (max-width: 720px){
       h1{ font-size: 36px; }
       .disc-wrap{ width: min(82vw, 420px); }
@@ -173,9 +207,15 @@
   <section class="hero">
     <div class="hero-inner">
       <div class="eyebrow">DJHub</div>
-      <h1>Find DJs. Book faster. Throw better events.</h1>
-      <p class="sub">Start by choosing your campus — scroll down and tap the disc to enter.</p>
-      <a class="scroll-hint" href="#disc">Scroll to the disc ↓</a>
+      <h1>
+        Find a DJ for your next
+        <span class="word-clip">
+          <span class="word current" id="heroWordCurrent">party</span>
+          <span class="word" id="heroWordNext">birthday</span>
+        </span>.
+      </h1>
+      <p class="sub">For the all the college EDM heads.</p>
+      <a class="scroll-hint" href="#disc">Scroll down ↓</a>
     </div>
   </section>
 
@@ -183,7 +223,7 @@
     <div class="disc-wrap">
       <img class="disc" id="discImg" src="{{ url_for('static', filename='img/homedisc.png') }}" alt="DJHub disc" />
       <a class="disc-cta" id="discCta" href="{{ url_for('select_campus') }}">
-        <span>Go to your college</span>
+        <span>Go to yourcollege</span>
       </a>
     </div>
   </section>
@@ -191,6 +231,12 @@
   <script>
     const disc = document.getElementById('discImg');
     const cta = document.getElementById('discCta');
+    const heroWordCurrent = document.getElementById('heroWordCurrent');
+    const heroWordNext = document.getElementById('heroWordNext');
+    const heroWords = ['Party', 'Birthday', 'Rave'];
+    let heroIndex = 0;
+    const dropDuration = 600;
+    const holdDuration = 2400;
     if (disc && cta) {
       cta.addEventListener('click', (e) => {
         e.preventDefault();
@@ -199,6 +245,24 @@
           window.location.href = cta.href;
         }, 650);
       });
+    }
+    if (heroWordCurrent && heroWordNext) {
+      heroWordCurrent.textContent = heroWords[heroIndex];
+      heroWordNext.textContent = heroWords[(heroIndex + 1) % heroWords.length];
+      const cycleWord = () => {
+        heroWordCurrent.classList.remove('enter');
+        heroWordNext.classList.remove('exit');
+        heroWordCurrent.classList.add('exit');
+        heroWordNext.classList.add('enter');
+        setTimeout(() => {
+          heroIndex = (heroIndex + 1) % heroWords.length;
+          heroWordCurrent.textContent = heroWords[heroIndex];
+          heroWordNext.textContent = heroWords[(heroIndex + 1) % heroWords.length];
+          heroWordCurrent.classList.remove('exit');
+          heroWordNext.classList.remove('enter');
+        }, dropDuration);
+      };
+      setInterval(cycleWord, dropDuration + holdDuration);
     }
   </script>
 </body>

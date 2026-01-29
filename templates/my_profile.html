@@ -299,17 +299,12 @@
                 placeholder="Track 1 title"
                 value="{{ form.get('track_title_1', (track_map.get(1).title if track_map and track_map.get(1) else '')) }}"
               >
-              <div style="display:flex;align-items:center;gap:8px;">
-                <input
-                  id="track_file_1"
-                  name="track_file_1"
-                  type="file"
-                  accept="audio/*"
-                >
-                <span id="trackFileName1" style="color:rgba(226,232,240,0.7);font-size:11px;font-weight:700;white-space:nowrap;">
-                  {% if track_map and track_map.get(1) %}{{ track_map.get(1).audio_url.split('/')[-1] }}{% endif %}
-                </span>
-              </div>
+              <input
+                id="track_file_1"
+                name="track_file_1"
+                type="file"
+                accept="audio/*"
+              >
             </div>
             <div style="display:grid;grid-template-columns: 1fr 1fr;gap:10px;">
               <input
@@ -318,17 +313,12 @@
                 placeholder="Track 2 title"
                 value="{{ form.get('track_title_2', (track_map.get(2).title if track_map and track_map.get(2) else '')) }}"
               >
-              <div style="display:flex;align-items:center;gap:8px;">
-                <input
-                  id="track_file_2"
-                  name="track_file_2"
-                  type="file"
-                  accept="audio/*"
-                >
-                <span id="trackFileName2" style="color:rgba(226,232,240,0.7);font-size:11px;font-weight:700;white-space:nowrap;">
-                  {% if track_map and track_map.get(2) %}{{ track_map.get(2).audio_url.split('/')[-1] }}{% endif %}
-                </span>
-              </div>
+              <input
+                id="track_file_2"
+                name="track_file_2"
+                type="file"
+                accept="audio/*"
+              >
             </div>
             <div style="display:grid;grid-template-columns: 1fr 1fr;gap:10px;">
               <input
@@ -337,17 +327,12 @@
                 placeholder="Track 3 title"
                 value="{{ form.get('track_title_3', (track_map.get(3).title if track_map and track_map.get(3) else '')) }}"
               >
-              <div style="display:flex;align-items:center;gap:8px;">
-                <input
-                  id="track_file_3"
-                  name="track_file_3"
-                  type="file"
-                  accept="audio/*"
-                >
-                <span id="trackFileName3" style="color:rgba(226,232,240,0.7);font-size:11px;font-weight:700;white-space:nowrap;">
-                  {% if track_map and track_map.get(3) %}{{ track_map.get(3).audio_url.split('/')[-1] }}{% endif %}
-                </span>
-              </div>
+              <input
+                id="track_file_3"
+                name="track_file_3"
+                type="file"
+                accept="audio/*"
+              >
             </div>
           </div>
         </div>
@@ -535,17 +520,5 @@
     }
   });
 
-  function wireTrackFileName(inputId, labelId){
-    const input = document.getElementById(inputId);
-    const label = document.getElementById(labelId);
-    if (!input || !label) return;
-    input.addEventListener("change", () => {
-      const file = input.files?.[0];
-      label.textContent = file ? file.name : label.textContent;
-    });
-  }
-  wireTrackFileName("track_file_1", "trackFileName1");
-  wireTrackFileName("track_file_2", "trackFileName2");
-  wireTrackFileName("track_file_3", "trackFileName3");
 </script>
 {% endblock %}

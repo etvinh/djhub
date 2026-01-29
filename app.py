@@ -1,6 +1,9 @@
 import os
 import re
 import uuid
+import secrets
+import smtplib
+from email.message import EmailMessage
 from collections import defaultdict, deque
 from time import time
 from urllib.parse import urlparse, urljoin
@@ -15,7 +18,7 @@ from flask import (
     flash,
     session
 )
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import or_, func, and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
@@ -43,18 +46,25 @@ from extensions import db
 # --- Flask App Initialization ---
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or os.urandom(32)
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///djhub.db"
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///djhub.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["UPLOAD_FOLDER"] = os.path.join("static", "uploads")
 app.config["MAX_CONTENT_LENGTH"] = 30 * 1024 * 1024
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production"
+app.config["SMTP_HOST"] = os.environ.get("SMTP_HOST")
+app.config["SMTP_PORT"] = int(os.environ.get("SMTP_PORT", "587"))
+app.config["SMTP_USERNAME"] = os.environ.get("SMTP_USERNAME")
+app.config["SMTP_PASSWORD"] = os.environ.get("SMTP_PASSWORD")
+app.config["SMTP_USE_TLS"] = os.environ.get("SMTP_USE_TLS", "true").lower() == "true"
+app.config["SMTP_FROM"] = os.environ.get("SMTP_FROM")
 
 db.init_app(app)
 csrf = CSRFProtect(app)
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{3,20}$")
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 INSTAGRAM_USERNAME_RE = re.compile(r"^[A-Za-z0-9._]{1,30}$")
 SPOTIFY_ID_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 MAX_MESSAGE_LENGTH = 1000
@@ -81,6 +91,43 @@ def is_safe_redirect(target: str) -> bool:
     ref_url = urlparse(request.host_url)
     test_url = urlparse(urljoin(request.host_url, target))
     return test_url.scheme in ("http", "https") and ref_url.netloc == test_url.netloc
+
+def generate_verification_code() -> str:
+    return f"{secrets.randbelow(1000000):06d}"
+
+def send_verification_email(to_email: str, code: str) -> bool:
+    host = app.config.get("SMTP_HOST")
+    from_addr = app.config.get("SMTP_FROM")
+    if not host or not from_addr:
+        app.logger.warning("SMTP not configured; skipping verification email.")
+        return False
+    msg = EmailMessage()
+    msg["Subject"] = "Your DJHub verification code"
+    msg["From"] = from_addr
+    msg["To"] = to_email
+    msg.set_content(
+        "Your DJHub verification code is "
+        f"{code}. It expires in 10 minutes."
+    )
+    try:
+        with smtplib.SMTP(host, app.config["SMTP_PORT"], timeout=10) as server:
+            if app.config.get("SMTP_USE_TLS", True):
+                server.starttls()
+            if app.config.get("SMTP_USERNAME") and app.config.get("SMTP_PASSWORD"):
+                server.login(app.config["SMTP_USERNAME"], app.config["SMTP_PASSWORD"])
+            server.send_message(msg)
+        return True
+    except Exception:
+        app.logger.exception("Failed to send verification email.")
+        return False
+
+def issue_verification_code(user: Users) -> bool:
+    code = generate_verification_code()
+    user.email_verification_hash = generate_password_hash(code)
+    user.email_verification_sent_at = datetime.utcnow()
+    user.email_verification_expires_at = datetime.utcnow() + timedelta(minutes=10)
+    db.session.commit()
+    return send_verification_email(user.email, code)
 
 def normalize_instagram_url(raw_value: str) -> str | None:
     if not raw_value:
@@ -364,6 +411,17 @@ def login():
         user = Users.query.filter(func.lower(Users.username) == username.lower()).first()
 
         if user and check_password_hash(user.password, password):
+            if not user.email_verified:
+                session["pending_verification_user_id"] = user.id
+                if not user.email_verification_expires_at or user.email_verification_expires_at < datetime.utcnow():
+                    sent = issue_verification_code(user)
+                    if sent:
+                        flash("Your verification code expired. A new one was sent.", "info")
+                    else:
+                        flash("Your verification code expired. Please resend a new one.", "warning")
+                else:
+                    flash("Please verify your email to continue.", "warning")
+                return redirect(url_for("verify_email"))
             login_user(user)
             flash(f"Welcome back, {user.username}!", "success")
             next_page = request.args.get("next")
@@ -442,6 +500,7 @@ def signup():
         username = (request.form.get("username") or "").strip()
         if username.startswith("@"):
             username = username[1:]
+        email = (request.form.get("email") or "").strip().lower()
         password = request.form.get("password")
         confirm_password = request.form.get("confirm_password")
 
@@ -450,31 +509,104 @@ def signup():
             flash("Username must be 3-20 characters and only letters, numbers, or underscores.", "danger")
             return render_template("signup.html", username=username)
 
+        if not email or not EMAIL_RE.match(email):
+            flash("Please enter a valid email address.", "danger")
+            return render_template("signup.html", username=username, email=email)
+
         if not password or len(password) < 8 or not re.search(r"[A-Za-z]", password) or not re.search(r"\d", password):
             flash("Password must be at least 8 characters and include a letter and a number.", "danger")
-            return render_template("signup.html", username=username)
+            return render_template("signup.html", username=username, email=email)
         
         if Users.query.filter(func.lower(Users.username) == username.lower()).first():
             flash("Username already taken. Please choose another.", "danger")
-            return render_template("signup.html", username=username)
+            return render_template("signup.html", username=username, email=email)
+
+        if Users.query.filter(func.lower(Users.email) == email.lower()).first():
+            flash("Email already in use. Please use another.", "danger")
+            return render_template("signup.html", username=username, email=email)
 
         if password != confirm_password:
             flash("Passwords do not match.", "danger")
-            return render_template("signup.html", username=username)
+            return render_template("signup.html", username=username, email=email)
 
         hashed_password = generate_password_hash(password, method='scrypt')
         
-        new_user = Users(username=username, password=hashed_password)
+        new_user = Users(username=username, email=email, password=hashed_password, email_verified=False)
         db.session.add(new_user)
         db.session.commit()
         if not Profile.query.filter_by(user_id=new_user.id).first():
             db.session.add(Profile(user_id=new_user.id))
             db.session.commit()
 
-        flash("Registration successful! Please log in.", "success")
-        return redirect(url_for("login"))
+        session["pending_verification_user_id"] = new_user.id
+        sent = issue_verification_code(new_user)
+        if sent:
+            flash("A confirmation code has been sent to your email.", "success")
+        else:
+            flash("We couldn't send your code yet. Check your email settings or resend.", "warning")
+        return redirect(url_for("verify_email"))
 
     return render_template("signup.html")
+
+def get_pending_verification_user():
+    user_id = session.get("pending_verification_user_id")
+    if not user_id:
+        return None
+    return Users.query.get(int(user_id))
+
+@app.route("/verify-email", methods=["GET", "POST"])
+def verify_email():
+    if current_user.is_authenticated:
+        return redirect(url_for("listings_feed"))
+    user = get_pending_verification_user()
+    if not user:
+        flash("No verification in progress. Please sign up or log in.", "info")
+        return redirect(url_for("login"))
+    if user.email_verified:
+        session.pop("pending_verification_user_id", None)
+        flash("Email already verified. Please log in.", "info")
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        code = "".join((request.form.get(f"code_{i}") or "").strip() for i in range(1, 7))
+        if len(code) != 6 or not code.isdigit():
+            flash("Enter the 6-digit code.", "danger")
+            return render_template("verify_email.html", email=user.email)
+        if user.email_verification_expires_at and user.email_verification_expires_at < datetime.utcnow():
+            flash("That code has expired. Please resend a new one.", "warning")
+            return render_template("verify_email.html", email=user.email)
+        if not user.email_verification_hash or not check_password_hash(user.email_verification_hash, code):
+            flash("Invalid code. Try again.", "danger")
+            return render_template("verify_email.html", email=user.email)
+
+        user.email_verified = True
+        user.email_verification_hash = None
+        user.email_verification_sent_at = None
+        user.email_verification_expires_at = None
+        db.session.commit()
+        session.pop("pending_verification_user_id", None)
+        flash("Account created. Please log in.", "success")
+        return redirect(url_for("login"))
+
+    return render_template("verify_email.html", email=user.email)
+
+@app.post("/verify-email/resend")
+def resend_verification():
+    if current_user.is_authenticated:
+        return redirect(url_for("listings_feed"))
+    user = get_pending_verification_user()
+    if not user:
+        flash("No verification in progress. Please sign up or log in.", "info")
+        return redirect(url_for("login"))
+    if is_rate_limited(f"resend:{user.id}", 3, 600):
+        flash("Too many resend attempts. Try again in a few minutes.", "danger")
+        return redirect(url_for("verify_email"))
+    sent = issue_verification_code(user)
+    if sent:
+        flash("A new verification code has been sent.", "success")
+    else:
+        flash("We couldn't send your code yet. Please try again.", "warning")
+    return redirect(url_for("verify_email"))
 
 
 
@@ -1077,18 +1209,8 @@ def my_profile():
             updated = False
             for position in (1, 2, 3):
                 title_input = track_titles[position - 1]
-                if not title_input:
-                    continue
-                if existing_tracks.get(position):
+                if title_input and existing_tracks.get(position):
                     existing_tracks[position].title = title_input
-                    updated = True
-                else:
-                    existing_tracks[position] = ProfileTrack(
-                        profile_id=profile.id,
-                        title=title_input,
-                        audio_url="",
-                        position=position,
-                    )
                     updated = True
             if updated:
                 db.session.add_all(list(existing_tracks.values()))
@@ -1170,9 +1292,7 @@ def profile_detail(profile_id):
     instagram_url = normalize_instagram_url(profile.instagram_url or "")
     spotify_url = normalize_spotify_url(profile.spotify_url or "")
     tracks = (ProfileTrack.query
-              .filter(ProfileTrack.profile_id == profile.id,
-                      ProfileTrack.audio_url.isnot(None),
-                      ProfileTrack.audio_url != "")
+              .filter_by(profile_id=profile.id)
               .order_by(ProfileTrack.position.asc())
               .all())
     avg_rating = (db.session.query(func.avg(Review.rating))
@@ -1540,5 +1660,6 @@ def view_conversation(conversation_id):
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-        seed_campus_data()
+        if os.environ.get("SEED_DATA") == "1":
+            seed_campus_data()
     app.run(debug=os.environ.get("FLASK_DEBUG") == "1")

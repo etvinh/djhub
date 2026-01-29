@@ -17,7 +17,12 @@ class Campus(db.Model):
 class Users(UserMixin, db.Model): 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(250), unique=True, nullable=False)
+    email = db.Column(db.String(255), unique=True, nullable=False)
     password = db.Column(db.String(250), nullable=False) # Stores the hashed password
+    email_verified = db.Column(db.Boolean, default=False, nullable=False)
+    email_verification_hash = db.Column(db.String(255))
+    email_verification_sent_at = db.Column(db.DateTime)
+    email_verification_expires_at = db.Column(db.DateTime)
     profiles = db.relationship(
         "Profile",
         back_populates="user",

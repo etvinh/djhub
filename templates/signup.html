@@ -15,9 +15,21 @@
       id="username"
       name="username"
       placeholder="@djname"
-      value="{{ request.form.username or '' }}"
+      value="{{ request.form.username or username or '' }}"
       required
       autofocus
+    >
+  </div>
+
+  <div class="form-group">
+    <label for="email">Email address</label>
+    <input
+      type="email"
+      id="email"
+      name="email"
+      placeholder="you@example.com"
+      value="{{ request.form.email or email or '' }}"
+      required
     >
   </div>
 
