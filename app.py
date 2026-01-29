@@ -72,6 +72,7 @@ app.config["SENDGRID_API_KEY"] = os.environ.get("SENDGRID_API_KEY")
 db.init_app(app)
 csrf = CSRFProtect(app)
 
+# --- Reference data seed helpers ---
 def seed_reference_data():
     if not Campus.query.first():
         db.session.add(Campus(name="UC Santa Cruz", slug="ucsc", is_active=True))
@@ -90,6 +91,7 @@ if os.environ.get("AUTO_CREATE_DB") == "1":
             seed_reference_data()
             app.logger.info("AUTO_SEED_REFERENCE enabled: seeded campus/genres/locations.")
 
+# --- Validation / rate limit config ---
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{3,20}$")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 INSTAGRAM_USERNAME_RE = re.compile(r"^[A-Za-z0-9._]{1,30}$")
@@ -97,11 +99,13 @@ SPOTIFY_ID_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 MAX_MESSAGE_LENGTH = 1000
 rate_limit_store = defaultdict(deque)
 
+# --- Error handlers ---
 @app.errorhandler(413)
 def request_entity_too_large(error):
     flash("File too large. Max upload size is 10MB.", "danger")
     return redirect(request.referrer or url_for("my_profile"))
 
+# --- Rate limiting helpers ---
 def is_rate_limited(key: str, limit: int, window_seconds: int) -> bool:
     now = time()
     bucket = rate_limit_store[key]
@@ -112,6 +116,7 @@ def is_rate_limited(key: str, limit: int, window_seconds: int) -> bool:
     bucket.append(now)
     return False
 
+# --- URL helpers ---
 def is_safe_redirect(target: str) -> bool:
     if not target:
         return False
@@ -119,6 +124,7 @@ def is_safe_redirect(target: str) -> bool:
     test_url = urlparse(urljoin(request.host_url, target))
     return test_url.scheme in ("http", "https") and ref_url.netloc == test_url.netloc
 
+# --- Email verification helpers ---
 def generate_verification_code() -> str:
     return f"{secrets.randbelow(1000000):06d}"
 
@@ -185,6 +191,7 @@ def issue_verification_code(user: Users) -> bool:
     db.session.commit()
     return send_verification_email(user.email, code)
 
+# --- Helpers: normalization ---
 def normalize_instagram_url(raw_value: str) -> str | None:
     if not raw_value:
         return None
@@ -258,6 +265,7 @@ def normalize_spotify_url(raw_value: str) -> str | None:
 
     return f"https://open.spotify.com/{kind}/{identifier}"
 
+# --- Helpers: uploads ---
 def get_upload_size(file_storage) -> int:
     try:
         file_storage.stream.seek(0, os.SEEK_END)
@@ -276,131 +284,8 @@ login_manager.init_app(app)
 login_manager.login_view = "login"
 login_manager.login_message_category = "info"
 
-@app.get("/l/<int:listing_id>", endpoint="listing_detail")
-def listing_detail(listing_id):
-    listing = Listing.query.get_or_404(listing_id)
-    accepted_request = BookingRequest.query.filter_by(
-        listing_id=listing.id,
-        status="accepted"
-    ).first()
-    if listing.is_archived:
-        if not current_user.is_authenticated:
-            abort(404)
-        is_owner = listing.profile and current_user.id == listing.profile.user_id
-        is_booked_dj = accepted_request and accepted_request.requester_id == current_user.id
-        if not (is_owner or is_booked_dj):
-            abort(404)
-    if current_user.is_authenticated:
-        ListingNotification.query.filter_by(
-            listing_id=listing.id,
-            recipient_id=current_user.id,
-            is_read=False
-        ).update({"is_read": True})
-        db.session.commit()
-    booking_requests = []
-    current_request = None
-    requester_profiles = {}
-    if current_user.is_authenticated and listing.profile:
-        if current_user.id == listing.profile.user_id:
-            request_query = BookingRequest.query.filter_by(listing_id=listing.id)
-            if listing.is_archived:
-                request_query = request_query.filter_by(status="accepted")
-            booking_requests = (request_query
-                                .order_by(BookingRequest.created_at.desc())
-                                .all())
-            if booking_requests:
-                requester_ids = [req.requester_id for req in booking_requests]
-                profiles = Profile.query.filter(Profile.user_id.in_(requester_ids)).all()
-                requester_profiles = {p.user_id: p for p in profiles}
-        else:
-            if listing.is_archived:
-                current_request = accepted_request
-            else:
-                current_request = BookingRequest.query.filter_by(
-                    listing_id=listing.id,
-                    requester_id=current_user.id
-                ).first()
-    return render_template(
-        "listing_detail.html",
-        listing=listing,
-        booking_requests=booking_requests,
-        current_request=current_request,
-        accepted_request=accepted_request,
-        requester_profiles=requester_profiles,
-    )
 
-def listings_pagination_from_request(per_page=10): #pagination helper
-    page = request.args.get("page", 1, type=int)
-
-    keyword = (request.args.get("keyword") or "").strip()[:100]
-    genre = (request.args.get("genre") or "").strip()[:100]
-    location = (request.args.get("location") or "").strip()[:100]
-    sort = (request.args.get("sort") or "").strip().lower()
-
-    q = Listing.query.filter(Listing.is_archived.is_(False))
-
-    if keyword:
-        like = f"%{keyword.lower()}%"
-        q = q.filter(or_(
-            func.lower(Listing.title).like(like),
-            func.lower(Listing.description).like(like),
-        ))
-
-    if genre:
-        q = q.filter(func.lower(Listing.genres) == genre.lower())
-
-    if location:
-        q = q.filter(func.lower(Listing.city) == location.lower())
-
-    if sort == "price_asc":
-        q = q.order_by(Listing.budget.asc().nullslast(), Listing.created_at.desc())
-    elif sort == "price_desc":
-        q = q.order_by(Listing.budget.desc().nullslast(), Listing.created_at.desc())
-    elif sort == "oldest":
-        q = q.order_by(Listing.created_at.asc())
-    else:
-        q = q.order_by(Listing.created_at.desc())
-
-    return q.paginate(page=page, per_page=per_page, error_out=False)
-
-@app.get("/api/listings")
-def api_listings():
-    pagination = listings_pagination_from_request(per_page=10)
-
-    return jsonify({
-        "listings": [
-            {
-                "id": l.id,
-                "title": l.title,
-                "city": l.city,
-                "date": l.date.isoformat() if l.date else None,
-                "time": l.time,
-                "budget": l.budget,
-                "genres": l.genres,
-                "description": l.description,
-                "cover_image_url": l.cover_image_url,
-            }
-            for l in pagination.items
-        ],
-        "has_next": pagination.has_next,
-        "next_page": pagination.next_num if pagination.has_next else None,
-    })
-
-@app.route("/feed", endpoint="listings_feed")
-def listings_feed(): #display listing feed
-    pagination = listings_pagination_from_request(per_page=10)
-    genres = Genre.query.order_by(Genre.name.asc()).all()
-    locations = Location.query.order_by(Location.name.asc()).all()
-
-    return render_template(
-        "index.html",
-        listings=pagination.items,
-        has_next=pagination.has_next,
-        next_page=pagination.next_num if pagination.has_next else None,
-        genres=genres,
-        locations=locations,
-    )
-# --- Landing Page (before campus selection) ---
+# --- Landing & campus selection ---
 @app.get("/", endpoint="landing")
 def landing():
     if session.get('campus_slug'):
@@ -439,10 +324,7 @@ def select_campus():
             
     return render_template("select_campus.html", campuses=campuses)
 
-# --- Flask-Login User Loader ---
-
-
-
+# --- Auth: login/logout/session ---
 @login_manager.user_loader
 def load_user(user_id):
     try:
@@ -551,8 +433,7 @@ def inject_auth():
 
 
 
-# --- AUTHENTICATION ROUTES (Modified login route) ---
-
+# --- Auth: signup + email verification ---
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if current_user.is_authenticated:
@@ -673,17 +554,7 @@ def resend_verification():
         flash("We couldn't send your code yet. Please try again.", "warning")
     return redirect(url_for("verify_email"))
 
-
-
-
-
-
-
-# --- MAIN APP ROUTES ---
-
-
-
-
+# --- Listings: create/edit/manage ---
 @app.route("/listings", endpoint="home") # Redirects '/' to 'select_campus', so /listings can be accessed directly if user continues without signing in
 def listings_redirect():
     return redirect(url_for('listings_feed'))
@@ -1146,14 +1017,9 @@ def my_bookings():
         unread_counts=unread_counts,
     )
 
-# --- Data Seeding ---
-def seed_campus_data():
-    if not Campus.query.filter_by(slug='ucsc').first():
-        ucsc = Campus(name='UC Santa Cruz', slug='ucsc')
-        db.session.add(ucsc)
-        db.session.commit()
-        print("Seeded UC Santa Cruz campus.")
 
+
+# --- Profiles ---
 @app.route("/profiles/search", endpoint="profile_search")
 def profile_search():
     genres = Genre.query.order_by(Genre.name.asc()).all()
@@ -1286,11 +1152,13 @@ def my_profile():
 
     return render_template("my_profile.html", profile=profile, form={}, genres=genres, locations=locations, tracks=tracks, track_map=track_map)
 
+# --- Static pages ---
 @app.route("/about", endpoint="about")
 def about():
     return render_template("about.html")
 
 
+# --- Profiles API ---
 @app.get("/api/profiles/search")
 def profile_search_api():
     q = (request.args.get("q") or "").strip()[:100]
@@ -1313,7 +1181,7 @@ def profile_search_api():
              .join(Profile.user)
              .outerjoin(Review, Review.profile_id == Profile.id)
              .filter(Profile.profile_type == "dj")
-             .group_by(Profile.id))
+             .group_by(Profile.id, Users.username))
 
     if q:
         query = query.filter(
@@ -1407,6 +1275,7 @@ def go_signup_for_messages():
     flash("Create an account to start messaging.", "info")
     return redirect(url_for("signup"))
 
+# --- Reviews ---
 @app.post("/profiles/<int:profile_id>/review", endpoint="profile_review")
 @login_required
 def profile_review(profile_id):
@@ -1448,6 +1317,7 @@ def profile_review(profile_id):
     flash("Thanks for reviewing!", "success")
     return redirect(url_for("profile_detail", profile_id=profile.id))
 
+# --- Messages ---
 @app.get("/messages", endpoint="inbox")
 @login_required
 def inbox():
@@ -1492,7 +1362,7 @@ def inbox():
 
     return render_template("inbox.html", items=items)
 
-
+# --- Messaging helpers ---
 def is_participant(convo: Conversation, user_id: int) -> bool:
     return user_id in (convo.user1_id, convo.user2_id)
 
@@ -1541,7 +1411,7 @@ def get_or_create_conversation(user_a_id: int, user_b_id: int) -> Conversation:
         db.session.rollback()
         return Conversation.query.filter_by(user1_id=u1, user2_id=u2).first()
 
-
+# --- Booking requests ---
 @app.post("/listings/<int:listing_id>/request-booking")
 @login_required
 def request_booking(listing_id):
@@ -1637,7 +1507,7 @@ def respond_booking(booking_id):
     return redirect(url_for("listing_detail", listing_id=listing.id))
 
 
-
+# --- Conversations ---
 @app.post("/messages/start")
 @login_required
 def start_conversation():
