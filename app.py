@@ -20,7 +20,7 @@ from flask import (
 )
 from datetime import datetime, timedelta
 from sqlalchemy import or_, func, and_
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, ProgrammingError
 from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -382,7 +382,16 @@ def select_campus():
     if session.get('campus_slug'):
         return redirect(url_for("listings_feed")) 
 
-    campuses = Campus.query.filter_by(is_active=True).all()
+    try:
+        campuses = Campus.query.filter_by(is_active=True).all()
+    except ProgrammingError:
+        db.session.rollback()
+        db.create_all()
+        seed_reference_data()
+        campuses = Campus.query.filter_by(is_active=True).all()
+    if not campuses:
+        seed_reference_data()
+        campuses = Campus.query.filter_by(is_active=True).all()
     
     if request.method == "POST":
         selected_slug = request.form.get("campus_slug")
