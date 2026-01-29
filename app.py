@@ -69,6 +69,24 @@ app.config["SMTP_FROM"] = os.environ.get("SMTP_FROM")
 db.init_app(app)
 csrf = CSRFProtect(app)
 
+def seed_reference_data():
+    if not Campus.query.first():
+        db.session.add(Campus(name="UC Santa Cruz", slug="ucsc", is_active=True))
+    if not Location.query.first():
+        db.session.add(Location(name="Santa Cruz"))
+    if not Genre.query.first():
+        for name in ["House", "Techno", "HipHop", "EDM", "Lo-Fi"]:
+            db.session.add(Genre(name=name))
+    db.session.commit()
+
+if os.environ.get("AUTO_CREATE_DB") == "1":
+    with app.app_context():
+        db.create_all()
+        app.logger.info("AUTO_CREATE_DB enabled: ensured tables exist.")
+        if os.environ.get("AUTO_SEED_REFERENCE") == "1":
+            seed_reference_data()
+            app.logger.info("AUTO_SEED_REFERENCE enabled: seeded campus/genres/locations.")
+
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{3,20}$")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 INSTAGRAM_USERNAME_RE = re.compile(r"^[A-Za-z0-9._]{1,30}$")
