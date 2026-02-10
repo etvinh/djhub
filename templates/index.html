@@ -25,16 +25,6 @@
     background: url("{{ url_for('static', filename='img/feedbackground.png') }}") center / cover fixed no-repeat;
     position: relative;
   }
-  body::before{
-    content: "";
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    background: rgba(15,23,42,0.45);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    z-index: 0;
-  }
   .djhub-feed{
     position: relative;
     z-index: 1;
@@ -62,7 +52,7 @@
     position: relative;
     min-height: 410px;
     border-radius: 18px;
-    overflow: hidden;
+    overflow: visible;
     border: 1px solid rgba(5, 8, 20, 0.65);
     background:
       linear-gradient(90deg, rgba(8,12,28,0.92) 0%, rgba(10,16,40,0.62) 55%, rgba(10,20,52,0.28) 100%),
@@ -162,49 +152,121 @@
     border-radius: 12px;
     padding: 10px;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
     box-shadow: 0 18px 50px rgba(15,23,42,0.12);
     border: 1px solid rgba(15,23,42,0.10);
+    overflow: visible;
+    position: relative;
   }
-  .searchbar input{
-    height: 40px;
-
-    border-radius: 10px;
+  .search-input{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f8fafc;
     border: 1px solid #e2e8f0;
-    padding: 0 12px;
+    border-radius: 10px;
+    padding: 0 6px 0 12px;
+    height: 44px;
+  }
+  .search-input input{
+    flex: 1;
+    height: 100%;
+    border: 0;
     outline: none;
     font-weight: 650;
     color: #0f172a;
-    background: #f8fafc;
+    background: transparent;
   }
-  .searchbar select{
-    height: 40px;
-    border-radius: 10px;
-    border: 1px solid #e2e8f0;
-    padding: 0 32px 0 12px;
-    outline: none;
-    font-weight: 650;
-    color: #0f172a;
-    background: #f8fafc;
-    appearance: none;
-  }
-  .searchbar input:focus{
-    border-color: #93c5fd;
-    box-shadow: 0 0 0 4px rgba(147,197,253,0.35);
-  }
-  .searchbar select:focus{
-    border-color: #93c5fd;
-    box-shadow: 0 0 0 4px rgba(147,197,253,0.35);
-  }
-  .searchbar button{
-    height: 40px;
+  .search-submit{
+    width: 36px;
+    height: 36px;
     border: 0;
     border-radius: 10px;
     background: #1f2a44;
     color: #fff;
-    font-weight: 900;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
+  }
+  .search-submit .material-symbols-outlined{ font-size: 20px; }
+  .search-input:focus-within{
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 4px rgba(147,197,253,0.35);
+  }
+
+  .filter-dropdown{
+    position: relative;
+  }
+  .filter-toggle{
+    height: 44px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    padding: 0 12px;
+    font-weight: 800;
+    color: #0f172a;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+  .filter-count{
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 800;
+  }
+  .filter-menu{
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: min(380px, 88vw);
+    background: #ffffff;
+    border: 1px solid rgba(15,23,42,0.12);
+    border-radius: 12px;
+    box-shadow: 0 18px 50px rgba(2,6,23,0.16);
+    padding: 12px;
+    display: none;
+    z-index: 60;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+  .filter-dropdown.open .filter-menu{
+    display: block;
+  }
+  .filter-group{
+    padding: 8px 0;
+    border-top: 1px solid rgba(15,23,42,0.08);
+  }
+  .filter-group:first-child{
+    border-top: 0;
+    padding-top: 0;
+  }
+  .filter-title{
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 900;
+    color: #475569;
+    margin-bottom: 8px;
+  }
+  .filter-options{
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 10px;
+  }
+  .filter-option{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .filter-option input{
+    width: 16px;
+    height: 16px;
   }
 
   /* ===== Main section ===== */
@@ -419,8 +481,14 @@
   /* Responsive */
   @media (max-width: 980px){
     .listings{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .searchbar{ grid-template-columns: 1fr 1fr; }
-    .searchbar button{ grid-column: 1 / -1; }
+    .searchbar{ grid-template-columns: 1fr; }
+    .filter-menu{
+      left: 0;
+      right: auto;
+    }
+    .filter-options{
+      grid-template-columns: 1fr;
+    }
   }
   @media (max-width: 560px){
     .listings{ grid-template-columns: 1fr; }
@@ -452,25 +520,48 @@
 
     <!-- Visual search bar (no backend) -->
     <div class="search-wrap">
+      {% set selected_genres = request.args.getlist('genre') %}
+      {% set selected_locations = request.args.getlist('location') %}
       <form class="searchbar" method="get" action="{{ url_for('listings_feed') }}">
-        <input name="keyword" placeholder="Keyword" value="{{ request.args.get('keyword','') }}" />
-        <select name="genre" aria-label="Genre">
-          <option value="">Genre</option>
-          {% for g in genres %}
-            <option value="{{ g.name }}" {% if request.args.get('genre') == g.name %}selected{% endif %}>
-              {{ g.name }}
-            </option>
-          {% endfor %}
-        </select>
-        <select name="location" aria-label="Location">
-          <option value="">Location</option>
-          {% for loc in locations %}
-            <option value="{{ loc.name }}" {% if request.args.get('location') == loc.name %}selected{% endif %}>
-              {{ loc.name }}
-            </option>
-          {% endfor %}
-        </select>
-        <button type="submit">Search</button>
+        <div class="search-input">
+          <input name="keyword" placeholder="Search listings" value="{{ request.args.get('keyword','') }}" />
+          <button class="search-submit" type="submit" aria-label="Search">
+            <span class="material-symbols-outlined" aria-hidden="true">search</span>
+          </button>
+        </div>
+        <div class="filter-dropdown" id="filterDropdown">
+          <button class="filter-toggle" type="button" aria-expanded="false" aria-controls="filterMenu">
+            Filter by
+            <span class="filter-count" id="filterCount">0 selected</span>
+            <span class="material-symbols-outlined" aria-hidden="true">tune</span>
+          </button>
+          <div class="filter-menu" id="filterMenu" aria-hidden="true">
+            <div class="filter-group">
+              <div class="filter-title">Genres</div>
+              <div class="filter-options">
+                {% for g in genres %}
+                  <label class="filter-option">
+                    <input type="checkbox" name="genre" value="{{ g.name }}"
+                      {% if g.name in selected_genres %}checked{% endif %}>
+                    {{ g.name }}
+                  </label>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="filter-group">
+              <div class="filter-title">Locations</div>
+              <div class="filter-options">
+                {% for loc in locations %}
+                  <label class="filter-option">
+                    <input type="checkbox" name="location" value="{{ loc.name }}"
+                      {% if loc.name in selected_locations %}checked{% endif %}>
+                    {{ loc.name }}
+                  </label>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
       </form>
     </div>
     
@@ -488,8 +579,12 @@
           <option value="price_desc" {% if request.args.get('sort') == 'price_desc' %}selected{% endif %}>Budget: Highest</option>
         </select>
         <input type="hidden" name="keyword" value="{{ request.args.get('keyword','') }}">
-        <input type="hidden" name="genre" value="{{ request.args.get('genre','') }}">
-        <input type="hidden" name="location" value="{{ request.args.get('location','') }}">
+        {% for g in request.args.getlist('genre') %}
+          <input type="hidden" name="genre" value="{{ g }}">
+        {% endfor %}
+        {% for loc in request.args.getlist('location') %}
+          <input type="hidden" name="location" value="{{ loc }}">
+        {% endfor %}
       </form>
     </div>
 
@@ -538,6 +633,35 @@
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
   }
+
+  const filterDropdown = document.getElementById("filterDropdown");
+  const filterToggle = filterDropdown?.querySelector(".filter-toggle");
+  const filterMenu = document.getElementById("filterMenu");
+  const filterCount = document.getElementById("filterCount");
+  const updateFilterCount = () => {
+    if (!filterDropdown || !filterCount) return;
+    const checked = filterDropdown.querySelectorAll("input[type='checkbox']:checked").length;
+    filterCount.textContent = `${checked} selected`;
+  };
+  updateFilterCount();
+  filterToggle?.addEventListener("click", () => {
+    if (!filterDropdown || !filterMenu) return;
+    const isOpen = filterDropdown.classList.toggle("open");
+    filterMenu.setAttribute("aria-hidden", String(!isOpen));
+    filterToggle.setAttribute("aria-expanded", String(isOpen));
+  });
+  filterDropdown?.addEventListener("change", (e) => {
+    if (e.target && e.target.matches("input[type='checkbox']")) {
+      updateFilterCount();
+    }
+  });
+  document.addEventListener("click", (e) => {
+    if (!filterDropdown) return;
+    if (filterDropdown.contains(e.target)) return;
+    filterDropdown.classList.remove("open");
+    filterMenu?.setAttribute("aria-hidden", "true");
+    filterToggle?.setAttribute("aria-expanded", "false");
+  });
 
   // === Your existing backend stays identical; just render new card markup ===
   const btn = document.getElementById('loadMore');

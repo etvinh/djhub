@@ -11,9 +11,9 @@
     <style>
       :root{
         --font: "Orbitron", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-        --bg: #3a2556;
-        --bg-2: #3a2556;
-        --text: #e2e8f0;
+        --bg: #ffffff;
+        --bg-2: #ffffff;
+        --text: #0f172a;
       }
       body{
         margin:0;
@@ -42,19 +42,6 @@
       }
       @media (prefers-reduced-motion: reduce){
         *{ animation: none !important; transition: none !important; }
-      }
-      body::before{
-        content: "";
-        position: fixed;
-        inset: 0;
-        pointer-events: none;
-        background:
-          linear-gradient(120deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.12) 36%, rgba(255,255,255,0.0) 66%),
-          linear-gradient(210deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.0) 48%),
-          radial-gradient(1200px 620px at 18% -12%, rgba(175,115,255,0.38), transparent 66%),
-          radial-gradient(900px 520px at 88% 6%, rgba(112,78,255,0.34), transparent 62%);
-        mix-blend-mode: screen;
-        z-index: 0;
       }
       .flash-wrap, .auth-page, .campus-page{
         position: relative;

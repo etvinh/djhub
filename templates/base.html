@@ -11,12 +11,12 @@
     <style>
         :root{
           --font: "Orbitron", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-          --bg: #3a2556;
-          --bg-2: #0f1b2d;
-          --text: #e2e8f0;
-          --muted: rgba(226,232,240,0.75);
-          --glass: rgba(15,23,42,0.62);
-          --glass-border: rgba(255,255,255,0.12);
+          --bg: #ffffff;
+          --bg-2: #ffffff;
+          --text: #0f172a;
+          --muted: rgba(100,116,139,0.9);
+          --glass: rgba(15,23,42,0.04);
+          --glass-border: rgba(15,23,42,0.08);
           --nav-bg: rgba(8, 12, 24, 0.72);
           --nav-border: rgba(255,255,255,0.10);
           --nav-text: rgba(255,255,255,0.92);
@@ -89,19 +89,6 @@
         @media (prefers-reduced-motion: reduce){
           *{ animation: none !important; transition: none !important; }
         }
-        body::before{
-          content: "";
-          position: fixed;
-          inset: 0;
-          pointer-events: none;
-          background:
-            linear-gradient(120deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.12) 36%, rgba(255,255,255,0.0) 66%),
-            linear-gradient(210deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.0) 48%),
-            radial-gradient(1200px 620px at 18% -12%, rgba(175,115,255,0.38), transparent 66%),
-            radial-gradient(900px 520px at 88% 6%, rgba(112,78,255,0.34), transparent 62%);
-          mix-blend-mode: screen;
-          z-index: 0;
-        }
         main, .navbar{
           position: relative;
           z-index: 1;
@@ -114,7 +101,7 @@
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 12px 16px;
+          padding: 6px 6px;
           background: linear-gradient(to bottom, rgba(8,12,24,0.78), rgba(8,12,24,0.55));
           border-bottom: 1px solid var(--nav-border);
           backdrop-filter: blur(10px);
@@ -123,7 +110,8 @@
 
         .nav-inner{
           width: 100%;
-          max-width: 1100px;
+          max-width: 100%;
+          padding: 0 2px;
           display: flex;
           align-items: center;
           gap: 12px;
@@ -141,6 +129,9 @@
           font-weight: 900;
           letter-spacing: 0.08em;
           position: relative;
+          border: 0;
+          background: transparent;
+          cursor: pointer;
         }
         .brand::before{
           content: "";
@@ -477,12 +468,16 @@
         }
     </style>
 </head>
-<body>
+<body data-authenticated="{{ 'true' if current_user.is_authenticated else 'false' }}">
 
     <nav class="navbar">
       <div class="nav-inner">
 
-        <!-- Brand (links to Home) -->
+        <button class="icon-btn" type="button" id="drawerToggle" aria-controls="appDrawer" aria-expanded="false" title="Menu">
+          <span class="material-symbols-outlined" aria-hidden="true">menu</span>
+        </button>
+
+        <!-- Brand (home) -->
         <a class="brand" href="{{ url_for('listings_feed') }}">
           <span class="brand-mark">DJ</span>
           <span class="brand-name">DJHub</span>
@@ -490,7 +485,6 @@
 
         <!-- Left links (same buttons as before) -->
         <div class="nav-links">
-          <a class="nav-link" href="{{ url_for('about') }}">About</a>
           <a class="nav-link" href="{{ url_for('profile_search') }}">Search Profiles</a>
           {% if current_user.is_authenticated %}
             <a class="nav-link" href="{{ url_for('my_listings') }}">
@@ -543,6 +537,31 @@
       </div>
     </nav>
 
+    <div class="app-drawer" id="appDrawer" aria-hidden="true">
+      <div class="drawer-overlay" data-drawer-close></div>
+      <div class="drawer-panel" role="dialog" aria-modal="true" aria-label="Navigation drawer">
+        <div class="drawer-header">
+          <span class="drawer-title">DJHub</span>
+          <button class="drawer-close" type="button" data-drawer-close aria-label="Close drawer">✕</button>
+        </div>
+        <div class="drawer-links">
+          <a class="drawer-link" href="{{ url_for('listings_feed') }}">Home</a>
+          <a class="drawer-link" href="{{ url_for('my_listings') }}" data-auth-required="true">My Listings</a>
+          <a class="drawer-link" href="{{ url_for('my_bookings') }}" data-auth-required="true">My Bookings</a>
+          <a class="drawer-link" href="{{ url_for('about') }}">About</a>
+        </div>
+        <div class="drawer-auth" id="drawerAuth" aria-hidden="true">
+          <div class="drawer-auth-title">Sign in required</div>
+          <div class="drawer-auth-text">Log in or create an account to continue.</div>
+          <div class="drawer-auth-actions">
+            <a class="drawer-auth-btn primary" href="{{ url_for('login') }}">Login</a>
+            <a class="drawer-auth-btn" href="{{ url_for('signup') }}">Sign Up</a>
+            <button class="drawer-auth-btn ghost" type="button" data-auth-close>Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         <div class="toast-stack" id="toastStack">
@@ -570,6 +589,59 @@
     </div>
 
     <script>
+      const drawer = document.getElementById("appDrawer");
+      const drawerToggle = document.getElementById("drawerToggle");
+      const closeDrawer = () => {
+        if (!drawer) return;
+        drawer.classList.remove("open");
+        drawer.setAttribute("aria-hidden", "true");
+        drawerToggle?.setAttribute("aria-expanded", "false");
+        document.body.classList.remove("drawer-open");
+      };
+      const openDrawer = () => {
+        if (!drawer) return;
+        drawer.classList.add("open");
+        drawer.setAttribute("aria-hidden", "false");
+        drawerToggle?.setAttribute("aria-expanded", "true");
+        document.body.classList.add("drawer-open");
+      };
+      drawerToggle?.addEventListener("click", () => {
+        if (!drawer) return;
+        drawer.classList.contains("open") ? closeDrawer() : openDrawer();
+      });
+      drawer?.querySelectorAll("[data-drawer-close]").forEach((el) => {
+        el.addEventListener("click", closeDrawer);
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeDrawer();
+      });
+
+      const drawerAuth = document.getElementById("drawerAuth");
+      const isAuthed = document.body.getAttribute("data-authenticated") === "true";
+      const openAuthDrawer = () => {
+        if (!drawerAuth) return;
+        openDrawer();
+        drawerAuth.classList.add("open");
+        drawerAuth.setAttribute("aria-hidden", "false");
+      };
+      const closeAuthDrawer = () => {
+        if (!drawerAuth) return;
+        drawerAuth.classList.remove("open");
+        drawerAuth.setAttribute("aria-hidden", "true");
+      };
+      drawerAuth?.querySelectorAll("[data-auth-close]").forEach((el) => {
+        el.addEventListener("click", closeAuthDrawer);
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeAuthDrawer();
+      });
+      document.addEventListener("click", (e) => {
+        const link = e.target.closest("a[data-auth-required]");
+        if (!link || isAuthed) return;
+        e.preventDefault();
+        openAuthDrawer();
+      });
+
       const toastStack = document.getElementById("toastStack");
       if (toastStack) {
         toastStack.querySelectorAll(".toast").forEach((toast) => {

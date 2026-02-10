@@ -1,12 +1,12 @@
 :root{
   --font: "Space Grotesk", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  --bg: #0b1220;
-  --bg-2: #0f1b2d;
-  --text: #e2e8f0;
-  --muted: rgba(226,232,240,0.72);
+  --bg: #ffffff;
+  --bg-2: #ffffff;
+  --text: #0f172a;
+  --muted: rgba(100,116,139,0.9);
   --accent: #3b82f6;
-  --glass: rgba(15,23,42,0.6);
-  --glass-border: rgba(255,255,255,0.12);
+  --glass: rgba(15,23,42,0.04);
+  --glass-border: rgba(15,23,42,0.08);
 }
 
 body{
@@ -32,4 +32,129 @@ a{ color: inherit; }
   background: rgba(255,255,255,0.08);
   color: var(--text);
   font-weight: 800;
+}
+
+/* Drawer */
+.app-drawer{
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+}
+.app-drawer.open{
+  pointer-events: auto;
+}
+.drawer-overlay{
+  position: absolute;
+  inset: 0;
+  background: rgba(8,12,24,0.55);
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+.app-drawer.open .drawer-overlay{
+  opacity: 1;
+}
+.drawer-panel{
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: min(320px, 86vw);
+  height: 100%;
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 12px;
+  transform: translateX(-100%);
+  transition: transform 220ms ease;
+  box-shadow: 12px 0 30px rgba(2,6,23,0.35);
+}
+.app-drawer.open .drawer-panel{
+  transform: translateX(0);
+}
+.drawer-header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.drawer-title{
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+.drawer-close{
+  border: 0;
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.drawer-links{
+  display: grid;
+  gap: 10px;
+}
+.drawer-link{
+  display: block;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.08);
+  text-decoration: none;
+  font-weight: 800;
+  color: #f8fafc;
+}
+.drawer-link:hover{
+  background: rgba(255,255,255,0.14);
+}
+body.drawer-open{
+  overflow: hidden;
+}
+
+/* Auth prompt inside drawer */
+.drawer-auth{
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  display: none;
+}
+.drawer-auth.open{
+  display: block;
+}
+.drawer-auth-title{
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.drawer-auth-text{
+  color: rgba(226,232,240,0.78);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.drawer-auth-actions{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.drawer-auth-btn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 800;
+  cursor: pointer;
+}
+.drawer-auth-btn.primary{
+  background: #4f7cff;
+  border-color: transparent;
+}
+.drawer-auth-btn.ghost{
+  background: transparent;
 }

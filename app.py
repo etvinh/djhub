@@ -20,7 +20,7 @@ from flask import (
     flash,
     session
 )
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import or_, func, and_
 from sqlalchemy.exc import IntegrityError, ProgrammingError
 from sqlalchemy.orm.exc import NoResultFound
@@ -127,6 +127,10 @@ def is_rate_limited(key: str, limit: int, window_seconds: int) -> bool:
     bucket.append(now)
     return False
 
+def utcnow_naive() -> datetime:
+    # Use timezone-aware UTC now but store as naive UTC for legacy columns.
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
 # --- URL helpers ---
 def is_safe_redirect(target: str) -> bool:
     if not target:
@@ -228,7 +232,7 @@ def login():
         if user and check_password_hash(user.password, password):
             if not user.email_verified:
                 session["pending_verification_user_id"] = user.id
-                if not user.email_verification_expires_at or user.email_verification_expires_at < datetime.utcnow():
+                if not user.email_verification_expires_at or user.email_verification_expires_at < utcnow_naive():
                     sent = issue_verification_code(user)
                     if sent:
                         flash("Your verification code expired. A new one was sent.", "info")
@@ -364,7 +368,7 @@ def get_pending_verification_user():
     user_id = session.get("pending_verification_user_id")
     if not user_id:
         return None
-    return Users.query.get(int(user_id))
+    return db.session.get(Users, int(user_id))
 
 @app.route("/verify-email", methods=["GET", "POST"])
 def verify_email():
@@ -384,7 +388,7 @@ def verify_email():
         if len(code) != 6 or not code.isdigit():
             flash("Enter the 6-digit code.", "danger")
             return render_template("verify_email.html", email=user.email)
-        if user.email_verification_expires_at and user.email_verification_expires_at < datetime.utcnow():
+        if user.email_verification_expires_at and user.email_verification_expires_at < utcnow_naive():
             flash("That code has expired. Please resend a new one.", "warning")
             return render_template("verify_email.html", email=user.email)
         if not user.email_verification_hash or not check_password_hash(user.email_verification_hash, code):
@@ -432,7 +436,17 @@ def generate_verification_code() -> str:
 def send_verification_email(to_email: str, code: str) -> bool:
     from_addr = app.config.get("SMTP_FROM")
     api_key = app.config.get("SENDGRID_API_KEY")
-    if api_key and from_addr:
+    app.logger.debug(
+        "Verification email config: sendgrid=%s smtp_host=%r smtp_port=%r smtp_from=%r",
+        bool(api_key),
+        app.config.get("SMTP_HOST"),
+        app.config.get("SMTP_PORT"),
+        from_addr,
+    )
+    if api_key:
+        if not from_addr:
+            app.logger.warning("SendGrid API key set but SMTP_FROM is missing.")
+            return False
         payload = {
             "personalizations": [{"to": [{"email": to_email}]}],
             "from": {"email": from_addr},
@@ -459,6 +473,7 @@ def send_verification_email(to_email: str, code: str) -> bool:
         except Exception:
             app.logger.exception("Failed to send verification email via SendGrid API.")
             return False
+        return False
 
     host = app.config.get("SMTP_HOST")
     if not host or not from_addr:
@@ -487,8 +502,8 @@ def send_verification_email(to_email: str, code: str) -> bool:
 def issue_verification_code(user: Users) -> bool:
     code = generate_verification_code()
     user.email_verification_hash = generate_password_hash(code)
-    user.email_verification_sent_at = datetime.utcnow()
-    user.email_verification_expires_at = datetime.utcnow() + timedelta(minutes=10)
+    user.email_verification_sent_at = utcnow_naive()
+    user.email_verification_expires_at = utcnow_naive() + timedelta(minutes=10)
     db.session.commit()
     return send_verification_email(user.email, code)
 
@@ -633,10 +648,12 @@ def profile_review(profile_id):
 import listingfeed
 import profile as profile_routes
 import bookingrequests as booking_request_routes
+import messages as message_routes
 
 listingfeed.register(app)
 profile_routes.register(app)
 booking_request_routes.register(app)
+message_routes.register(app, is_rate_limited=is_rate_limited, MAX_MESSAGE_LENGTH=MAX_MESSAGE_LENGTH)
 
 # --- Run app ---
 
